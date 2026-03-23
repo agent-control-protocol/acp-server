@@ -1,0 +1,320 @@
+import type { ChatCompletionTool } from "openai/resources/chat/completions";
+import type { ManifestMessage, UIAction } from "./types.js";
+
+/**
+ * Converts an ACP manifest into OpenAI-compatible tool definitions.
+ *
+ * Generates 8 base tools (navigate, fill_field, clear_field, click_action,
+ * highlight, focus, ask_confirm, show_toast) plus 2 modal tools
+ * (open_modal, close_modal) when the manifest contains modal descriptors.
+ *
+ * Field, action, and modal IDs are deduplicated across all screens.
+ * Screen IDs and labels are included as enums in the navigate tool.
+ *
+ * @param manifest - The ACP manifest describing available screens and UI elements.
+ * @returns An array of OpenAI-compatible tool definitions.
+ *
+ * @example
+ * ```ts
+ * const tools = manifestToTools(manifest);
+ * // Pass to OpenAI: openai.chat.completions.create({ tools, ... })
+ * ```
+ */
+export function manifestToTools(manifest: ManifestMessage): ChatCompletionTool[] {
+  const screenIDs: string[] = [];
+  const screenLabels: string[] = [];
+  for (const [id, s] of Object.entries(manifest.screens)) {
+    screenIDs.push(id);
+    screenLabels.push(`${id} (${s.label})`);
+  }
+
+  const allFieldIDs = collectFieldIDs(manifest);
+  const allActionIDs = collectActionIDs(manifest);
+  const allModalIDs = collectModalIDs(manifest);
+
+  const tools: ChatCompletionTool[] = [
+    navigateTool(screenIDs, screenLabels),
+    fillFieldTool(allFieldIDs),
+    clearFieldTool(allFieldIDs),
+    clickActionTool(allActionIDs),
+    highlightTool(allFieldIDs),
+    focusTool(allFieldIDs),
+    askConfirmTool(),
+    showToastTool(),
+  ];
+
+  if (allModalIDs.length > 0) {
+    tools.push(openModalTool(allModalIDs), closeModalTool());
+  }
+
+  return tools;
+}
+
+/**
+ * Converts an OpenAI tool call into an ACP UIAction.
+ *
+ * Supports all 10 tool names: navigate, fill_field, clear_field, click_action,
+ * highlight, focus, open_modal, close_modal, ask_confirm, show_toast.
+ *
+ * @param name - The tool function name from the LLM response.
+ * @param argsJSON - The JSON-encoded arguments string from the LLM response.
+ * @returns A UIAction object ready to be sent in a command message.
+ * @throws {Error} If the tool name is not recognized.
+ *
+ * @example
+ * ```ts
+ * const action = toolCallToUIAction("fill_field", '{"field":"name","value":"Alice"}');
+ * // => { do: "fill", field: "name", value: "Alice", animate: "typewriter" }
+ * ```
+ */
+export function toolCallToUIAction(name: string, argsJSON: string): UIAction {
+  let args: Record<string, unknown>;
+  try {
+    args = JSON.parse(argsJSON);
+  } catch {
+    args = {};
+  }
+
+  switch (name) {
+    case "navigate":
+      return { do: "navigate", screen: str(args.screen) };
+
+    case "fill_field":
+      return {
+        do: "fill",
+        field: str(args.field),
+        value: args.value,
+        animate: (str(args.animate) as UIAction["animate"]) || "typewriter",
+        speed: num(args.speed) || undefined,
+      };
+
+    case "clear_field":
+      return { do: "clear", field: str(args.field) };
+
+    case "click_action":
+      return { do: "click", action: str(args.action) };
+
+    case "highlight":
+      return {
+        do: "highlight",
+        field: str(args.field),
+        duration: num(args.duration) || undefined,
+      };
+
+    case "focus":
+      return { do: "focus", field: str(args.field) };
+
+    case "open_modal":
+      return {
+        do: "open_modal",
+        modal: str(args.modal),
+        query: str(args.query) || undefined,
+      };
+
+    case "close_modal":
+      return { do: "close_modal" };
+
+    case "ask_confirm":
+      return { do: "ask_confirm", message: str(args.message) };
+
+    case "show_toast":
+      return {
+        do: "show_toast",
+        message: str(args.message),
+        level: (str(args.level) as UIAction["level"]) || undefined,
+        duration: num(args.duration) || undefined,
+      };
+
+    default:
+      throw new Error(`Unknown tool: ${name}`);
+  }
+}
+
+// ── Tool Builders ───────────────────────────────────────────────────────────
+
+function makeTool(name: string, description: string, parameters: object): ChatCompletionTool {
+  return {
+    type: "function",
+    function: { name, description, parameters },
+  } as ChatCompletionTool;
+}
+
+function navigateTool(screenIDs: string[], screenLabels: string[]): ChatCompletionTool {
+  return makeTool(
+    "navigate",
+    `Navigate to a screen. Available: ${screenLabels.join(", ")}`,
+    {
+      type: "object",
+      properties: {
+        screen: { type: "string", enum: screenIDs, description: "Screen ID to navigate to" },
+      },
+      required: ["screen"],
+    },
+  );
+}
+
+function fillFieldTool(fieldIDs: string[]): ChatCompletionTool {
+  return makeTool(
+    "fill_field",
+    `Fill a form field with a value. The field animates as the value is typed. Available fields: ${fieldIDs.join(", ")}`,
+    {
+      type: "object",
+      properties: {
+        field: { type: "string", description: "Field ID to fill" },
+        value: { description: "Value to set (string, number, or boolean depending on field type)" },
+        animate: {
+          type: "string",
+          enum: ["typewriter", "count_up", "fade_in", "none"],
+          default: "typewriter",
+          description: "Animation style for filling",
+        },
+      },
+      required: ["field", "value"],
+    },
+  );
+}
+
+function clearFieldTool(fieldIDs: string[]): ChatCompletionTool {
+  return makeTool("clear_field", "Clear a form field value", {
+    type: "object",
+    properties: {
+      field: { type: "string", description: "Field ID to clear" },
+    },
+    required: ["field"],
+  });
+}
+
+function clickActionTool(actionIDs: string[]): ChatCompletionTool {
+  return makeTool(
+    "click_action",
+    `Click a button or trigger an action. Available: ${actionIDs.join(", ")}. IMPORTANT: if the action has requiresConfirmation=true, you MUST call ask_confirm first and wait for the user's response before clicking.`,
+    {
+      type: "object",
+      properties: {
+        action: { type: "string", description: "Action ID to click" },
+      },
+      required: ["action"],
+    },
+  );
+}
+
+function highlightTool(fieldIDs: string[]): ChatCompletionTool {
+  return makeTool("highlight", "Temporarily highlight a field to draw the user's attention", {
+    type: "object",
+    properties: {
+      field: { type: "string", description: "Field ID to highlight" },
+      duration: { type: "integer", default: 2000, description: "Highlight duration in milliseconds" },
+    },
+    required: ["field"],
+  });
+}
+
+function focusTool(fieldIDs: string[]): ChatCompletionTool {
+  return makeTool("focus", "Set keyboard focus on a field", {
+    type: "object",
+    properties: {
+      field: { type: "string", description: "Field ID to focus" },
+    },
+    required: ["field"],
+  });
+}
+
+function openModalTool(modalIDs: string[]): ChatCompletionTool {
+  return makeTool(
+    "open_modal",
+    `Open a modal/dialog. Available: ${modalIDs.join(", ")}`,
+    {
+      type: "object",
+      properties: {
+        modal: { type: "string", description: "Modal ID to open" },
+        query: { type: "string", description: "Optional search query to pre-fill in the modal" },
+      },
+      required: ["modal"],
+    },
+  );
+}
+
+function closeModalTool(): ChatCompletionTool {
+  return makeTool("close_modal", "Close the currently open modal", {
+    type: "object",
+    properties: {},
+  });
+}
+
+function askConfirmTool(): ChatCompletionTool {
+  return makeTool(
+    "ask_confirm",
+    "Ask the user for confirmation before proceeding with a destructive or important action.",
+    {
+      type: "object",
+      properties: {
+        message: { type: "string", description: "Confirmation question to ask the user" },
+      },
+      required: ["message"],
+    },
+  );
+}
+
+function showToastTool(): ChatCompletionTool {
+  return makeTool("show_toast", "Show a temporary notification/toast message in the app", {
+    type: "object",
+    properties: {
+      message: { type: "string", description: "Toast message text" },
+      level: { type: "string", enum: ["info", "success", "warning", "error"], default: "info" },
+      duration: { type: "integer", default: 3000 },
+    },
+    required: ["message"],
+  });
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function collectFieldIDs(m: ManifestMessage): string[] {
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const s of Object.values(m.screens)) {
+    for (const f of s.fields ?? []) {
+      if (!seen.has(f.id)) {
+        ids.push(f.id);
+        seen.add(f.id);
+      }
+    }
+  }
+  return ids;
+}
+
+function collectActionIDs(m: ManifestMessage): string[] {
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const s of Object.values(m.screens)) {
+    for (const a of s.actions ?? []) {
+      if (!seen.has(a.id)) {
+        ids.push(a.id);
+        seen.add(a.id);
+      }
+    }
+  }
+  return ids;
+}
+
+function collectModalIDs(m: ManifestMessage): string[] {
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const s of Object.values(m.screens)) {
+    for (const md of s.modals ?? []) {
+      if (!seen.has(md.id)) {
+        ids.push(md.id);
+        seen.add(md.id);
+      }
+    }
+  }
+  return ids;
+}
+
+function str(v: unknown): string {
+  return typeof v === "string" ? v : "";
+}
+
+function num(v: unknown): number {
+  return typeof v === "number" ? v : 0;
+}
