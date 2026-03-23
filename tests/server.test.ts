@@ -131,7 +131,7 @@ describe("ACP Server", () => {
       const chats = client.messagesOfType<ChatMessage>("chat");
       expect(chats).toHaveLength(1);
       expect(chats[0].from).toBe("agent");
-      expect(chats[0].message).toContain("How can I help");
+      expect(chats[0].message).toContain("I can");
       expect(chats[0].final).toBe(true);
 
       await client.close();

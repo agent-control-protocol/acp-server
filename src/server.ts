@@ -188,14 +188,36 @@ function handleManifest(
   session.setManifest(msg);
   send({ type: "status", status: "idle" });
 
-  // Send greeting
-  const name = msg.persona?.name ?? "assistant";
+  // Send greeting based on manifest context
   send({
     type: "chat",
     from: "agent",
-    message: `Connected. How can I help?`,
+    message: buildGreeting(msg),
     final: true,
   });
+}
+
+function buildGreeting(msg: ManifestMessage): string {
+  const name = msg.persona?.name;
+  const role = msg.persona?.role;
+  const screens = Object.values(msg.screens);
+  const screenLabel = screens.length === 1 ? screens[0].label : null;
+
+  // Count capabilities
+  const fieldCount = screens.reduce((sum, s) => sum + (s.fields?.length ?? 0), 0);
+  const actionCount = screens.reduce((sum, s) => sum + (s.actions?.length ?? 0), 0);
+
+  const intro = name ? `Hi, I'm ${name}!` : "Hi!";
+  const roleDesc = role ? ` I'm your ${role}.` : "";
+
+  let capability = "";
+  if (screenLabel && fieldCount > 0) {
+    capability = ` I can help you with the ${screenLabel} — just tell me what to fill in and I'll handle it.`;
+  } else if (fieldCount > 0) {
+    capability = ` I can fill forms, navigate screens, and click actions for you — just tell me what you need.`;
+  }
+
+  return `${intro}${roleDesc}${capability}`;
 }
 
 async function handleText(
