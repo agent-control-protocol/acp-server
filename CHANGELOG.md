@@ -5,6 +5,13 @@ All notable changes to `@acprotocol/server` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] - 2026-03-23
+
+### Improved
+
+- Agent now proactively fills fields when user provides matching data instead of waiting for explicit "fill the form" instructions
+- Added rule: "Your primary job is to operate the UI. Whenever you can act, act."
+
 ## [0.1.1] - 2026-03-23
 
 ### Improved
