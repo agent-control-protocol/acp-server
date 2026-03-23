@@ -10,7 +10,7 @@ export default defineConfig({
   banner: ({ format }) => {
     if (format === "esm") {
       return {
-        js: "// @acp-protocol/server — Apache 2.0",
+        js: "// @acprotocol/server — Apache 2.0",
       };
     }
   },

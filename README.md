@@ -1,7 +1,7 @@
-# @acp-protocol/server
+# @acprotocol/server
 
-[![npm version](https://img.shields.io/npm/v/@acp-protocol/server)](https://www.npmjs.com/package/@acp-protocol/server)
-[![license](https://img.shields.io/npm/l/@acp-protocol/server)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/@acprotocol/server)](https://www.npmjs.com/package/@acprotocol/server)
+[![license](https://img.shields.io/npm/l/@acprotocol/server)](./LICENSE)
 [![tests](https://img.shields.io/badge/tests-211%20passed-brightgreen)]()
 
 > ACP Reference Server — a minimal TypeScript server implementing the [Agent Control Protocol](https://acp-protocol.org).
@@ -24,7 +24,7 @@ The SDK sends a **manifest** describing screens, fields, actions, and modals. Th
 ## Architecture
 
 ```
-@acp-protocol/server
+@acprotocol/server
 ├── server.ts      WebSocket server, connection handling, message routing
 ├── agent.ts       Streaming agent loop (LLM → tools → execute → repeat)
 ├── session.ts     Per-connection state: manifest, history, seq counter
@@ -60,7 +60,7 @@ SDK                          Engine                         LLM
 ## Quick Start
 
 ```bash
-OPENAI_API_KEY=sk-... npx @acp-protocol/server
+OPENAI_API_KEY=sk-... npx @acprotocol/server
 ```
 
 The server starts a WebSocket endpoint at `ws://localhost:3000/connect`.
@@ -78,25 +78,25 @@ The server starts a WebSocket endpoint at `ws://localhost:3000/connect`.
 
 ```bash
 # OpenAI
-OPENAI_API_KEY=sk-... npx @acp-protocol/server
+OPENAI_API_KEY=sk-... npx @acprotocol/server
 
 # Groq
 OPENAI_API_KEY=gsk-... OPENAI_BASE_URL=https://api.groq.com/openai/v1 \
-  ACP_MODEL=llama-3.3-70b-versatile npx @acp-protocol/server
+  ACP_MODEL=llama-3.3-70b-versatile npx @acprotocol/server
 
 # DeepSeek
 OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://api.deepseek.com \
-  ACP_MODEL=deepseek-chat npx @acp-protocol/server
+  ACP_MODEL=deepseek-chat npx @acprotocol/server
 
 # Local (LM Studio / Ollama)
 OPENAI_BASE_URL=http://localhost:1234/v1 OPENAI_API_KEY=none \
-  ACP_MODEL=local npx @acp-protocol/server
+  ACP_MODEL=local npx @acprotocol/server
 ```
 
 ## Using as a Library
 
 ```typescript
-import { createServer } from "@acp-protocol/server";
+import { createServer } from "@acprotocol/server";
 import OpenAI from "openai";
 
 const server = createServer({

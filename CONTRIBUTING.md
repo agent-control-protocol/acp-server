@@ -1,4 +1,4 @@
-# Contributing to @acp-protocol/server
+# Contributing to @acprotocol/server
 
 Thank you for your interest in contributing to the ACP reference server. This guide covers everything you need to get started.
 

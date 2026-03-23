@@ -11,7 +11,7 @@ if (!apiKey) {
   console.error("Error: OPENAI_API_KEY environment variable is required.");
   console.error("");
   console.error("Usage:");
-  console.error("  OPENAI_API_KEY=sk-... npx @acp-protocol/server");
+  console.error("  OPENAI_API_KEY=sk-... npx @acprotocol/server");
   console.error("");
   console.error("Options:");
   console.error("  OPENAI_BASE_URL   LLM base URL (default: OpenAI)");

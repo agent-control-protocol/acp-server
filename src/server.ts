@@ -50,7 +50,7 @@ export interface ACPServer {
  *
  * @example
  * ```ts
- * import { createServer } from "@acp-protocol/server";
+ * import { createServer } from "@acprotocol/server";
  * import OpenAI from "openai";
  *
  * const server = createServer({

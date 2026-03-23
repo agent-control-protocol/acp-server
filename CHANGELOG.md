@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@acp-protocol/server` will be documented in this file.
+All notable changes to `@acprotocol/server` will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - OpenAI-compatible agent loop with streaming support
 - Manifest-to-tools conversion (14 UI actions mapped to OpenAI tools)
 - System prompt builder with manifest context injection
-- CLI entry point (`npx @acp-protocol/server`)
+- CLI entry point (`npx @acprotocol/server`)
 - Support for any OpenAI-compatible API via `OPENAI_BASE_URL`
 - 211 tests (Vitest) with 94%+ statement coverage
 - Conformance validation against ACP v1 JSON Schema (AJV 2020-12)

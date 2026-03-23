@@ -1,5 +1,5 @@
 {
-  "name": "@acp-protocol/server",
+  "name": "@acprotocol/server",
   "version": "0.1.0",
   "description": "ACP Reference Server — a minimal TypeScript server implementing the Agent Control Protocol",
   "license": "Apache-2.0",

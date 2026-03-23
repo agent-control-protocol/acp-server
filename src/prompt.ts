@@ -16,7 +16,7 @@ import type { ManifestMessage } from "./types.js";
  *
  * @example
  * ```ts
- * import { buildSystemPrompt } from "@acp-protocol/server";
+ * import { buildSystemPrompt } from "@acprotocol/server";
  *
  * const prompt = buildSystemPrompt(manifest);
  * // => "You are Aria, CRM assistant.\n\n..."

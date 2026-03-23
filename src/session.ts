@@ -13,7 +13,7 @@ const MAX_HISTORY = 40;
  *
  * @example
  * ```ts
- * import { Session } from "@acp-protocol/server";
+ * import { Session } from "@acprotocol/server";
  *
  * const session = new Session("session-id");
  * session.setManifest(manifest);

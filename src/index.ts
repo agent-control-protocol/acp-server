@@ -1,12 +1,12 @@
 /**
- * @module @acp-protocol/server
+ * @module @acprotocol/server
  *
  * ACP Reference Server — a minimal TypeScript server implementing the
  * Agent Control Protocol (ACP) for AI agents to control existing application UIs.
  *
  * @example
  * ```ts
- * import { createServer } from "@acp-protocol/server";
+ * import { createServer } from "@acprotocol/server";
  * import OpenAI from "openai";
  *
  * const server = createServer({
@@ -21,7 +21,7 @@
  *
  * @example
  * ```ts
- * import { buildSystemPrompt, manifestToTools, Session, runAgentLoop } from "@acp-protocol/server";
+ * import { buildSystemPrompt, manifestToTools, Session, runAgentLoop } from "@acprotocol/server";
  * ```
  *
  * @packageDocumentation
