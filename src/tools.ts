@@ -1,5 +1,5 @@
 import type { ChatCompletionTool } from "openai/resources/chat/completions";
-import type { ManifestMessage, UIAction } from "./types.js";
+import type { ManifestMessage, UIAction, FieldDescriptor } from "./types.js";
 
 /**
  * Converts an ACP manifest into OpenAI-compatible tool definitions.
@@ -28,13 +28,14 @@ export function manifestToTools(manifest: ManifestMessage): ChatCompletionTool[]
     screenLabels.push(`${id} (${s.label})`);
   }
 
-  const allFieldIDs = collectFieldIDs(manifest);
+  const allFields = collectFields(manifest);
+  const allFieldIDs = allFields.map((f) => f.id);
   const allActionIDs = collectActionIDs(manifest);
   const allModalIDs = collectModalIDs(manifest);
 
   const tools: ChatCompletionTool[] = [
     navigateTool(screenIDs, screenLabels),
-    fillFieldTool(allFieldIDs),
+    fillFieldTool(allFields),
     clearFieldTool(allFieldIDs),
     clickActionTool(allActionIDs),
     highlightTool(allFieldIDs),
@@ -153,15 +154,25 @@ function navigateTool(screenIDs: string[], screenLabels: string[]): ChatCompleti
   );
 }
 
-function fillFieldTool(fieldIDs: string[]): ChatCompletionTool {
+function fillFieldTool(fields: FieldDescriptor[]): ChatCompletionTool {
+  const fieldDescriptions = fields.map((f) => {
+    let desc = `${f.id} (${f.type})`;
+    if (f.options?.length) {
+      const opts = f.options.map((o) => o.value).join(", ");
+      desc += ` — valid values: [${opts}]`;
+    }
+    if (f.required) desc += " REQUIRED";
+    return desc;
+  });
+
   return makeTool(
     "fill_field",
-    `Fill a form field with a value. The field animates as the value is typed. Available fields: ${fieldIDs.join(", ")}`,
+    `Fill a form field with a value. Available fields:\n${fieldDescriptions.join("\n")}`,
     {
       type: "object",
       properties: {
         field: { type: "string", description: "Field ID to fill" },
-        value: { description: "Value to set (string, number, or boolean depending on field type)" },
+        value: { description: "Value to set. For select fields, use one of the valid option values listed above." },
         animate: {
           type: "string",
           enum: ["typewriter", "count_up", "fade_in", "none"],
@@ -269,18 +280,18 @@ function showToastTool(): ChatCompletionTool {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function collectFieldIDs(m: ManifestMessage): string[] {
+function collectFields(m: ManifestMessage): FieldDescriptor[] {
   const seen = new Set<string>();
-  const ids: string[] = [];
+  const fields: FieldDescriptor[] = [];
   for (const s of Object.values(m.screens)) {
     for (const f of s.fields ?? []) {
       if (!seen.has(f.id)) {
-        ids.push(f.id);
+        fields.push(f);
         seen.add(f.id);
       }
     }
   }
-  return ids;
+  return fields;
 }
 
 function collectActionIDs(m: ManifestMessage): string[] {
