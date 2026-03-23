@@ -175,9 +175,16 @@ npm start       # Run built version
 ## Related
 
 - [ACP Specification](https://acp-protocol.org) — the protocol spec and JSON Schema
-- [ACP Conformance Suite](https://github.com/acp-protocol/acp-protocol/tree/main/conformance) — test fixtures and validators
+- [ACP Conformance Suite](https://github.com/agent-control-protocol/acp/tree/main/conformance) — test fixtures and validators
 
 > **MCP reads. ACP acts.** MCP connects models to data. ACP connects agents to interfaces.
+
+## Community
+
+- [GitHub Discussions](https://github.com/agent-control-protocol/acp/discussions) — Questions, ideas, and general discussion
+- [Issue Tracker](https://github.com/agent-control-protocol/acp-server/issues) — Bug reports and feature requests
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security Policy](SECURITY.md)
 
 ## License
 

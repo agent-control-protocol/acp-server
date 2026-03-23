@@ -3,6 +3,25 @@
   "version": "0.1.0",
   "description": "ACP Reference Server — a minimal TypeScript server implementing the Agent Control Protocol",
   "license": "Apache-2.0",
+  "author": "Primoia Technologies (https://primoia.ai)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agent-control-protocol/acp-server.git"
+  },
+  "homepage": "https://acp-protocol.org",
+  "bugs": {
+    "url": "https://github.com/agent-control-protocol/acp-server/issues"
+  },
+  "keywords": [
+    "acp",
+    "agent-control-protocol",
+    "ai-agent",
+    "ui-automation",
+    "websocket",
+    "openai",
+    "protocol",
+    "reference-server"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
