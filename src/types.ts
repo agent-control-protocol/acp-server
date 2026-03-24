@@ -4,9 +4,21 @@
 // ── Field & Screen Descriptors ──────────────────────────────────────────────
 
 export type FieldType =
-  | "text" | "number" | "currency" | "date" | "datetime" | "email" | "phone"
-  | "masked" | "select" | "autocomplete" | "checkbox" | "radio" | "textarea"
-  | "file" | "hidden";
+  | 'text'
+  | 'number'
+  | 'currency'
+  | 'date'
+  | 'datetime'
+  | 'email'
+  | 'phone'
+  | 'masked'
+  | 'select'
+  | 'autocomplete'
+  | 'checkbox'
+  | 'radio'
+  | 'textarea'
+  | 'file'
+  | 'hidden';
 
 export interface SelectOption {
   value: string;
@@ -102,13 +114,23 @@ export interface ActionResult {
 // ── UI Action ───────────────────────────────────────────────────────────────
 
 export type UIActionDo =
-  | "navigate" | "fill" | "clear" | "select" | "click"
-  | "highlight" | "focus" | "scroll_to" | "show_toast"
-  | "ask_confirm" | "open_modal" | "close_modal"
-  | "enable" | "disable";
+  | 'navigate'
+  | 'fill'
+  | 'clear'
+  | 'select'
+  | 'click'
+  | 'highlight'
+  | 'focus'
+  | 'scroll_to'
+  | 'show_toast'
+  | 'ask_confirm'
+  | 'open_modal'
+  | 'close_modal'
+  | 'enable'
+  | 'disable';
 
-export type AnimationType = "typewriter" | "count_up" | "fade_in" | "none";
-export type ToastLevel = "info" | "success" | "warning" | "error";
+export type AnimationType = 'typewriter' | 'count_up' | 'fade_in' | 'none';
+export type ToastLevel = 'info' | 'success' | 'warning' | 'error';
 
 export interface UIAction {
   do: UIActionDo;
@@ -128,7 +150,7 @@ export interface UIAction {
 // ── Client Messages (SDK → Engine) ──────────────────────────────────────────
 
 export interface ManifestMessage {
-  type: "manifest";
+  type: 'manifest';
   app: string;
   version?: string;
   currentScreen?: string;
@@ -139,37 +161,37 @@ export interface ManifestMessage {
 }
 
 export interface TextMessage {
-  type: "text";
+  type: 'text';
   message: string;
 }
 
 export interface StateMessage {
-  type: "state";
+  type: 'state';
   screen: string;
   fields?: Record<string, FieldState>;
   canSubmit?: boolean;
 }
 
 export interface ResultMessage {
-  type: "result";
+  type: 'result';
   seq: number;
   results: ActionResult[];
   state?: InlineState;
 }
 
 export interface ConfirmMessage {
-  type: "confirm";
+  type: 'confirm';
   seq: number;
   confirmed: boolean;
 }
 
 export interface LlmConfigMessage {
-  type: "llm_config";
+  type: 'llm_config';
   provider: string;
 }
 
 export interface ResponseLangConfigMessage {
-  type: "response_lang_config";
+  type: 'response_lang_config';
   language: string;
 }
 
@@ -185,7 +207,7 @@ export type ClientMessage =
 // ── Server Messages (Engine → SDK) ──────────────────────────────────────────
 
 export interface ConfigResponse {
-  type: "config";
+  type: 'config';
   sessionId: string;
   features?: { chat?: boolean; [key: string]: unknown };
   providers?: ProviderInfo[];
@@ -193,32 +215,32 @@ export interface ConfigResponse {
 }
 
 export interface CommandMessage {
-  type: "command";
+  type: 'command';
   seq: number;
   actions: UIAction[];
 }
 
 export interface ChatMessage {
-  type: "chat";
-  from: "agent" | "user" | "system";
+  type: 'chat';
+  from: 'agent' | 'user' | 'system';
   message: string;
   final?: boolean;
 }
 
 export interface ChatTokenMessage {
-  type: "chat_token";
+  type: 'chat_token';
   token: string;
 }
 
-export type AgentStatus = "idle" | "thinking" | "executing";
+export type AgentStatus = 'idle' | 'thinking' | 'executing';
 
 export interface StatusMessage {
-  type: "status";
+  type: 'status';
   status: AgentStatus;
 }
 
 export interface ErrorMessage {
-  type: "error";
+  type: 'error';
   code?: string;
   message: string;
 }

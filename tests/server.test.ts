@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { WebSocket } from "ws";
-import { createServer } from "../src/server.js";
+import { describe, it, expect } from 'vitest';
+import { WebSocket } from 'ws';
+import { createServer } from '../src/server.js';
 import type {
   ConfigResponse,
   ChatMessage,
@@ -8,10 +8,10 @@ import type {
   ErrorMessage,
   CommandMessage,
   ServerMessage,
-} from "../src/types.js";
-import { createCrmManifest, createMinimalManifest } from "./helpers/manifest-factory.js";
-import { createMockOpenAI, textOnlyScenario, toolCallScenario } from "./helpers/mock-openai.js";
-import { WSTestClient } from "./helpers/ws-test-client.js";
+} from '../src/types.js';
+import { createCrmManifest, createMinimalManifest } from './helpers/manifest-factory.js';
+import { createMockOpenAI, textOnlyScenario, toolCallScenario } from './helpers/mock-openai.js';
+import { WSTestClient } from './helpers/ws-test-client.js';
 
 let portCounter = 19300;
 function nextPort(): number {
@@ -21,15 +21,15 @@ function nextPort(): number {
 /** Wait helper */
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-describe("ACP Server", () => {
+describe('ACP Server', () => {
   // ── Lifecycle ───────────────────────────────────────────────────────────
 
-  describe("lifecycle", () => {
-    it("starts and accepts WebSocket connections", async () => {
+  describe('lifecycle', () => {
+    it('starts and accepts WebSocket connections', async () => {
       const port = nextPort();
       const server = createServer({
         openai: createMockOpenAI({ responses: [] }),
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
@@ -40,11 +40,11 @@ describe("ACP Server", () => {
       await server.stop();
     });
 
-    it("stop() closes all connections gracefully", async () => {
+    it('stop() closes all connections gracefully', async () => {
       const port = nextPort();
       const server = createServer({
         openai: createMockOpenAI({ responses: [] }),
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
@@ -59,47 +59,47 @@ describe("ACP Server", () => {
 
   // ── Config ──────────────────────────────────────────────────────────────
 
-  describe("config", () => {
-    it("sends config message immediately on connect", async () => {
+  describe('config', () => {
+    it('sends config message immediately on connect', async () => {
       const port = nextPort();
       const server = createServer({
         openai: createMockOpenAI({ responses: [] }),
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
       const client = new WSTestClient();
       await client.connect(`ws://localhost:${port}/connect`);
 
-      const config = await client.waitForMessage("config", 2000);
-      expect(config.type).toBe("config");
+      const config = await client.waitForMessage('config', 2000);
+      expect(config.type).toBe('config');
 
       await client.close();
       await server.stop();
     });
 
-    it("config contains sessionId, features, providers", async () => {
+    it('config contains sessionId, features, providers', async () => {
       const port = nextPort();
       const server = createServer({
         openai: createMockOpenAI({ responses: [] }),
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
       const client = new WSTestClient();
       await client.connect(`ws://localhost:${port}/connect`);
 
-      const config = (await client.waitForMessage("config", 2000)) as ConfigResponse;
+      const config = (await client.waitForMessage('config', 2000)) as ConfigResponse;
       expect(config.sessionId).toBeDefined();
       expect(config.sessionId.length).toBeGreaterThan(0);
       expect(config.features).toEqual({ chat: true });
       expect(config.providers).toHaveLength(1);
       expect(config.providers![0]).toMatchObject({
-        id: "default",
-        name: "Default",
-        model: "test-model",
+        id: 'default',
+        name: 'Default',
+        model: 'test-model',
       });
-      expect(config.current_provider).toBe("default");
+      expect(config.current_provider).toBe('default');
 
       await client.close();
       await server.stop();
@@ -108,30 +108,30 @@ describe("ACP Server", () => {
 
   // ── Manifest ────────────────────────────────────────────────────────────
 
-  describe("manifest", () => {
-    it("responds with idle status and greeting after manifest", async () => {
+  describe('manifest', () => {
+    it('responds with idle status and greeting after manifest', async () => {
       const port = nextPort();
       const server = createServer({
         openai: createMockOpenAI({ responses: [] }),
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
       const client = new WSTestClient();
       await client.connect(`ws://localhost:${port}/connect`);
 
-      await client.waitForMessage("config", 2000);
+      await client.waitForMessage('config', 2000);
       client.send(createCrmManifest());
 
       await client.waitForMessages(3, 3000);
 
-      const statuses = client.messagesOfType<StatusMessage>("status");
-      expect(statuses.some((s) => s.status === "idle")).toBe(true);
+      const statuses = client.messagesOfType<StatusMessage>('status');
+      expect(statuses.some((s) => s.status === 'idle')).toBe(true);
 
-      const chats = client.messagesOfType<ChatMessage>("chat");
+      const chats = client.messagesOfType<ChatMessage>('chat');
       expect(chats).toHaveLength(1);
-      expect(chats[0].from).toBe("agent");
-      expect(chats[0].message).toContain("I can");
+      expect(chats[0].from).toBe('agent');
+      expect(chats[0].message).toContain('I can');
       expect(chats[0].final).toBe(true);
 
       await client.close();
@@ -141,57 +141,55 @@ describe("ACP Server", () => {
 
   // ── Text processing ─────────────────────────────────────────────────────
 
-  describe("text", () => {
-    it("processes text through agent loop and returns to idle", async () => {
+  describe('text', () => {
+    it('processes text through agent loop and returns to idle', async () => {
       const port = nextPort();
       const server = createServer({
         openai: createMockOpenAI({
-          responses: [textOnlyScenario("Hello there!")],
+          responses: [textOnlyScenario('Hello there!')],
         }),
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
       const client = new WSTestClient();
       await client.connect(`ws://localhost:${port}/connect`);
 
-      await client.waitForMessage("config", 2000);
+      await client.waitForMessage('config', 2000);
       client.send(createMinimalManifest());
       await wait(100);
       client.clearMessages();
 
-      client.send({ type: "text", message: "Hi" });
+      client.send({ type: 'text', message: 'Hi' });
       await wait(500);
 
-      const statuses = client.messagesOfType<StatusMessage>("status");
-      expect(statuses.some((s) => s.status === "thinking")).toBe(true);
-      expect(statuses.some((s) => s.status === "idle")).toBe(true);
+      const statuses = client.messagesOfType<StatusMessage>('status');
+      expect(statuses.some((s) => s.status === 'thinking')).toBe(true);
+      expect(statuses.some((s) => s.status === 'idle')).toBe(true);
 
-      const chats = client.messagesOfType<ChatMessage>("chat");
+      const chats = client.messagesOfType<ChatMessage>('chat');
       expect(chats.length).toBeGreaterThanOrEqual(1);
       const finalChat = chats[chats.length - 1];
-      expect(finalChat.message).toBe("Hello there!");
+      expect(finalChat.message).toBe('Hello there!');
       expect(finalChat.final).toBe(true);
 
       await client.close();
       await server.stop();
     });
 
-    it("rejects concurrent text messages with busy error", async () => {
+    it('rejects concurrent text messages with busy error', async () => {
       const port = nextPort();
       const slowMockAI = {
         chat: {
           completions: {
             create: async () => {
               await wait(300);
-              const chunks = textOnlyScenario("response").map((delta) => ({
-                id: "chatcmpl-mock",
-                object: "chat.completion.chunk",
+              const chunks = textOnlyScenario('response').map((delta) => ({
+                id: 'chatcmpl-mock',
+                object: 'chat.completion.chunk',
                 created: Date.now(),
-                model: "mock",
-                choices: [
-                  { index: 0, delta, finish_reason: null, logprobs: null },
-                ],
+                model: 'mock',
+                choices: [{ index: 0, delta, finish_reason: null, logprobs: null }],
               }));
               return (async function* () {
                 for (const c of chunks) yield c;
@@ -202,25 +200,25 @@ describe("ACP Server", () => {
       };
       const server = createServer({
         openai: slowMockAI as any,
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
       const client = new WSTestClient();
       await client.connect(`ws://localhost:${port}/connect`);
 
-      await client.waitForMessage("config", 2000);
+      await client.waitForMessage('config', 2000);
       client.send(createMinimalManifest());
       await wait(100);
 
-      client.send({ type: "text", message: "First" });
+      client.send({ type: 'text', message: 'First' });
       await wait(50);
-      client.send({ type: "text", message: "Second" });
+      client.send({ type: 'text', message: 'Second' });
 
       await wait(600);
 
-      const errors = client.messagesOfType<ErrorMessage>("error");
-      expect(errors.some((e) => e.code === "busy")).toBe(true);
+      const errors = client.messagesOfType<ErrorMessage>('error');
+      expect(errors.some((e) => e.code === 'busy')).toBe(true);
 
       await client.close();
       await server.stop();
@@ -229,35 +227,35 @@ describe("ACP Server", () => {
 
   // ── Result/Confirm delivery ─────────────────────────────────────────────
 
-  describe("result delivery", () => {
-    it("delivers result to pending resolver for tool call commands", async () => {
+  describe('result delivery', () => {
+    it('delivers result to pending resolver for tool call commands', async () => {
       const port = nextPort();
       const server = createServer({
         openai: createMockOpenAI({
           responses: [
-            toolCallScenario("call-1", "navigate", { screen: "home" }),
-            textOnlyScenario("Navigated."),
+            toolCallScenario('call-1', 'navigate', { screen: 'home' }),
+            textOnlyScenario('Navigated.'),
           ],
         }),
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
       const client = new WSTestClient();
       await client.connect(`ws://localhost:${port}/connect`);
 
-      await client.waitForMessage("config", 2000);
+      await client.waitForMessage('config', 2000);
       client.send(createMinimalManifest());
       await wait(100);
       client.clearMessages();
 
-      client.send({ type: "text", message: "Navigate home" });
+      client.send({ type: 'text', message: 'Navigate home' });
       await wait(200);
 
-      const commands = client.messagesOfType<CommandMessage>("command");
+      const commands = client.messagesOfType<CommandMessage>('command');
       if (commands.length > 0) {
         client.send({
-          type: "result",
+          type: 'result',
           seq: commands[0].seq,
           results: [{ index: 0, success: true }],
         });
@@ -265,7 +263,7 @@ describe("ACP Server", () => {
 
       await wait(500);
 
-      const chats = client.messagesOfType<ChatMessage>("chat");
+      const chats = client.messagesOfType<ChatMessage>('chat');
       expect(chats.length).toBeGreaterThanOrEqual(1);
 
       await client.close();
@@ -275,21 +273,21 @@ describe("ACP Server", () => {
 
   // ── Error handling ──────────────────────────────────────────────────────
 
-  describe("errors", () => {
-    it("sends parse_error for invalid JSON", async () => {
+  describe('errors', () => {
+    it('sends parse_error for invalid JSON', async () => {
       const port = nextPort();
       const server = createServer({
         openai: createMockOpenAI({ responses: [] }),
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
 
       const ws = new WebSocket(`ws://localhost:${port}/connect`);
-      await new Promise<void>((resolve) => ws.on("open", resolve));
+      await new Promise<void>((resolve) => ws.on('open', resolve));
 
       const messages: ServerMessage[] = [];
-      ws.on("message", (data: Buffer) => {
+      ws.on('message', (data: Buffer) => {
         messages.push(JSON.parse(data.toString()));
       });
 
@@ -297,14 +295,12 @@ describe("ACP Server", () => {
       await wait(100);
 
       // Send invalid JSON
-      ws.send("{invalid json}");
+      ws.send('{invalid json}');
       await wait(200);
 
-      const errors = messages.filter(
-        (m: any) => m.type === "error" && m.code === "parse_error",
-      );
+      const errors = messages.filter((m: any) => m.type === 'error' && m.code === 'parse_error');
       expect(errors.length).toBeGreaterThanOrEqual(1);
-      expect((errors[0] as ErrorMessage).message).toBe("Invalid JSON");
+      expect((errors[0] as ErrorMessage).message).toBe('Invalid JSON');
 
       ws.close();
       await wait(50);
@@ -314,28 +310,28 @@ describe("ACP Server", () => {
 
   // ── State message ──────────────────────────────────────────────────────
 
-  describe("state message", () => {
-    it("updates session screen on state message", async () => {
+  describe('state message', () => {
+    it('updates session screen on state message', async () => {
       const port = nextPort();
       const server = createServer({
         openai: createMockOpenAI({
-          responses: [textOnlyScenario("OK!")],
+          responses: [textOnlyScenario('OK!')],
         }),
-        model: "test-model",
+        model: 'test-model',
         port,
       });
       await server.start();
       const client = new WSTestClient();
       await client.connect(`ws://localhost:${port}/connect`);
 
-      await client.waitForMessage("config", 2000);
+      await client.waitForMessage('config', 2000);
       client.send(createCrmManifest());
       await wait(100);
 
-      client.send({ type: "state", screen: "deals" });
+      client.send({ type: 'state', screen: 'deals' });
       await wait(50);
 
-      const errors = client.messagesOfType<ErrorMessage>("error");
+      const errors = client.messagesOfType<ErrorMessage>('error');
       expect(errors).toHaveLength(0);
 
       await client.close();

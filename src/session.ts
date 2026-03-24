@@ -1,6 +1,6 @@
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import type { ManifestMessage } from "./types.js";
-import { buildSystemPrompt } from "./prompt.js";
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import type { ManifestMessage } from './types.js';
+import { buildSystemPrompt } from './prompt.js';
 
 /** Maximum number of messages to keep in the sliding window. */
 const MAX_HISTORY = 40;
@@ -30,7 +30,7 @@ export class Session {
   manifest: ManifestMessage | null = null;
 
   /** The current screen ID. */
-  currentScreen = "";
+  currentScreen = '';
 
   private history: ChatCompletionMessageParam[] = [];
   private _seq = 0;
@@ -95,11 +95,11 @@ export class Session {
    * @param prompt - The new system prompt content.
    */
   updateSystemPrompt(prompt: string): void {
-    const idx = this.history.findIndex((m) => m.role === "system");
+    const idx = this.history.findIndex((m) => m.role === 'system');
     if (idx >= 0) {
-      this.history[idx] = { role: "system", content: prompt };
+      this.history[idx] = { role: 'system', content: prompt };
     } else {
-      this.history.unshift({ role: "system", content: prompt });
+      this.history.unshift({ role: 'system', content: prompt });
     }
   }
 

@@ -1,6 +1,6 @@
 name: Bug Report
 description: Report a bug in the ACP reference server
-labels: ["bug"]
+labels: ['bug']
 body:
   - type: textarea
     id: description
@@ -34,11 +34,11 @@ body:
     attributes:
       label: Environment
       description: Node.js version, OS, and any relevant details.
-      placeholder: "Node 22.x, Ubuntu 24.04"
+      placeholder: 'Node 22.x, Ubuntu 24.04'
 
   - type: input
     id: version
     attributes:
       label: Version
-      description: "@acprotocol/server version."
-      placeholder: "0.1.0"
+      description: '@acprotocol/server version.'
+      placeholder: '0.1.0'

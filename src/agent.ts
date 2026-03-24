@@ -1,8 +1,8 @@
-import type OpenAI from "openai";
-import type { ChatCompletionChunk } from "openai/resources/chat/completions";
-import type { Session } from "./session.js";
-import type { UIAction, ResultMessage, ServerMessage } from "./types.js";
-import { manifestToTools, toolCallToUIAction } from "./tools.js";
+import type OpenAI from 'openai';
+import type { ChatCompletionChunk } from 'openai/resources/chat/completions';
+import type { Session } from './session.js';
+import type { UIAction, ResultMessage, ServerMessage } from './types.js';
+import { manifestToTools, toolCallToUIAction } from './tools.js';
 
 /** Maximum number of LLM rounds before sending a fallback response. */
 const MAX_ROUNDS = 5;
@@ -52,12 +52,12 @@ export async function runAgentLoop(
   send: SendFn,
 ): Promise<void> {
   // Add user message to history
-  session.addMessage({ role: "user", content: text });
+  session.addMessage({ role: 'user', content: text });
 
   // Build tools from manifest
   const tools = session.manifest ? manifestToTools(session.manifest) : undefined;
 
-  let lastResponseText = "";
+  let lastResponseText = '';
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const history = session.getHistory();
@@ -69,7 +69,7 @@ export async function runAgentLoop(
       stream: true,
     });
 
-    let contentBuf = "";
+    let contentBuf = '';
     const accToolCalls: Array<{
       id: string;
       type: string;
@@ -83,7 +83,7 @@ export async function runAgentLoop(
       // Stream content tokens
       if (delta.content) {
         contentBuf += delta.content;
-        send({ type: "chat_token", token: delta.content });
+        send({ type: 'chat_token', token: delta.content });
       }
 
       // Accumulate tool call deltas
@@ -91,7 +91,7 @@ export async function runAgentLoop(
         for (const tc of delta.tool_calls) {
           const idx = tc.index ?? 0;
           while (accToolCalls.length <= idx) {
-            accToolCalls.push({ id: "", type: "", function: { name: "", arguments: "" } });
+            accToolCalls.push({ id: '', type: '', function: { name: '', arguments: '' } });
           }
           if (tc.id) accToolCalls[idx].id = tc.id;
           if (tc.type) accToolCalls[idx].type = tc.type;
@@ -103,13 +103,13 @@ export async function runAgentLoop(
 
     // Build assistant message for history
     const assistantMsg: Record<string, unknown> = {
-      role: "assistant" as const,
+      role: 'assistant' as const,
       content: contentBuf || null,
     };
     if (accToolCalls.length > 0) {
       assistantMsg.tool_calls = accToolCalls.map((tc) => ({
         id: tc.id,
-        type: "function" as const,
+        type: 'function' as const,
         function: { name: tc.function.name, arguments: tc.function.arguments },
       }));
     }
@@ -118,7 +118,7 @@ export async function runAgentLoop(
     // No tool calls → final text response
     if (accToolCalls.length === 0) {
       if (contentBuf) {
-        send({ type: "chat", from: "agent", message: contentBuf, final: true });
+        send({ type: 'chat', from: 'agent', message: contentBuf, final: true });
       }
       return;
     }
@@ -139,7 +139,7 @@ export async function runAgentLoop(
       } catch (err) {
         // Report parse error back to LLM
         session.addMessage({
-          role: "tool",
+          role: 'tool',
           content: JSON.stringify({ error: String(err) }),
           tool_call_id: tc.id,
         });
@@ -149,11 +149,10 @@ export async function runAgentLoop(
     if (roundActions.length === 0) continue;
 
     // Check if this round is ask_confirm only
-    const isConfirmOnly =
-      roundActions.length === 1 && roundActions[0].do === "ask_confirm";
+    const isConfirmOnly = roundActions.length === 1 && roundActions[0].do === 'ask_confirm';
 
     const seq = session.nextSeq();
-    send({ type: "status", status: "executing" });
+    send({ type: 'status', status: 'executing' });
 
     let resultMsg: ResultMessage;
     try {
@@ -163,16 +162,16 @@ export async function runAgentLoop(
       // Execution failed — report to LLM
       for (const m of mappings) {
         session.addMessage({
-          role: "tool",
+          role: 'tool',
           content: JSON.stringify({ success: false, error: String(err) }),
           tool_call_id: m.callId,
         });
       }
-      send({ type: "status", status: "thinking" });
+      send({ type: 'status', status: 'thinking' });
       continue;
     }
 
-    send({ type: "status", status: "thinking" });
+    send({ type: 'status', status: 'thinking' });
 
     // Map results back to tool messages
     const resultsByIndex = new Map<number, { success: boolean; error?: string }>();
@@ -188,23 +187,23 @@ export async function runAgentLoop(
         result.success = r.success;
         if (!r.success && r.error) result.error = r.error;
       }
-      if (m.action.do === "navigate") {
+      if (m.action.do === 'navigate') {
         session.setScreen(m.action.screen!);
         result.screen = m.action.screen;
       }
-      if (m.action.do === "fill") {
+      if (m.action.do === 'fill') {
         result.field = m.action.field;
         result.value = m.action.value;
       }
 
       // For ask_confirm, inject the user's yes/no response
-      if (isConfirmOnly && m.action.do === "ask_confirm") {
+      if (isConfirmOnly && m.action.do === 'ask_confirm') {
         const confirmed = resultMsg.results[0]?.success ?? false;
-        result.user_response = confirmed ? "Yes" : "No";
+        result.user_response = confirmed ? 'Yes' : 'No';
       }
 
       session.addMessage({
-        role: "tool",
+        role: 'tool',
         content: JSON.stringify(result),
         tool_call_id: m.callId,
       });
@@ -213,8 +212,8 @@ export async function runAgentLoop(
 
   // Ran out of rounds — send fallback
   if (lastResponseText) {
-    send({ type: "chat", from: "agent", message: lastResponseText, final: true });
+    send({ type: 'chat', from: 'agent', message: lastResponseText, final: true });
   } else {
-    send({ type: "chat", from: "agent", message: "Done.", final: true });
+    send({ type: 'chat', from: 'agent', message: 'Done.', final: true });
   }
 }

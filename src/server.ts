@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto";
-import { WebSocketServer, WebSocket } from "ws";
-import type { IncomingMessage } from "node:http";
-import type OpenAI from "openai";
+import { randomUUID } from 'node:crypto';
+import { WebSocketServer, WebSocket } from 'ws';
+import type { IncomingMessage } from 'node:http';
+import type OpenAI from 'openai';
 import type {
   ClientMessage,
   ManifestMessage,
@@ -9,9 +9,9 @@ import type {
   ConfirmMessage,
   ServerMessage,
   UIAction,
-} from "./types.js";
-import { Session } from "./session.js";
-import { runAgentLoop } from "./agent.js";
+} from './types.js';
+import { Session } from './session.js';
+import { runAgentLoop } from './agent.js';
 
 /** Timeout in milliseconds for waiting on a client result/confirm. */
 const EXECUTE_TIMEOUT_MS = 30_000;
@@ -68,8 +68,8 @@ export function createServer(options: ServerOptions): ACPServer {
 
   return {
     async start() {
-      wss = new WebSocketServer({ port, path: "/connect" });
-      wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
+      wss = new WebSocketServer({ port, path: '/connect' });
+      wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
         handleConnection(ws, openai, model);
       });
     },
@@ -77,7 +77,7 @@ export function createServer(options: ServerOptions): ACPServer {
     async stop() {
       if (!wss) return;
       for (const ws of wss.clients) {
-        ws.close(1001, "Server shutting down");
+        ws.close(1001, 'Server shutting down');
       }
       await new Promise<void>((resolve) => wss!.close(() => resolve()));
       wss = null;
@@ -106,11 +106,11 @@ function handleConnection(ws: WebSocket, openai: OpenAI, model: string): void {
 
   // Send config on connect
   send({
-    type: "config",
+    type: 'config',
     sessionId,
     features: { chat: true },
-    providers: [{ id: "default", name: "Default", model }],
-    current_provider: "default",
+    providers: [{ id: 'default', name: 'Default', model }],
+    current_provider: 'default',
   });
 
   // Keepalive ping every 30s
@@ -118,7 +118,7 @@ function handleConnection(ws: WebSocket, openai: OpenAI, model: string): void {
     if (ws.readyState === WebSocket.OPEN) ws.ping();
   }, 30_000);
 
-  ws.on("close", () => {
+  ws.on('close', () => {
     clearInterval(pingInterval);
     // Clean up any pending resolvers
     for (const [, reject] of pendingResults) {
@@ -128,48 +128,64 @@ function handleConnection(ws: WebSocket, openai: OpenAI, model: string): void {
     pendingConfirms.clear();
   });
 
-  ws.on("message", (data: Buffer) => {
+  ws.on('message', (data: Buffer) => {
     let msg: ClientMessage;
     try {
       msg = JSON.parse(data.toString());
     } catch {
-      send({ type: "error", code: "parse_error", message: "Invalid JSON" });
+      send({ type: 'error', code: 'parse_error', message: 'Invalid JSON' });
       return;
     }
 
     switch (msg.type) {
-      case "manifest":
+      case 'manifest':
         handleManifest(msg, session, send, openai, model);
         break;
 
-      case "text":
+      case 'text':
         if (!msg.message) return;
         if (processing) {
-          send({ type: "error", code: "busy", message: "Already processing a request" });
+          send({ type: 'error', code: 'busy', message: 'Already processing a request' });
           return;
         }
         processing = true;
-        handleText(msg.message, session, openai, model, send, makeExecuteFn(send, session, pendingResults, pendingConfirms))
-          .finally(() => { processing = false; });
+        handleText(
+          msg.message,
+          session,
+          openai,
+          model,
+          send,
+          makeExecuteFn(send, session, pendingResults, pendingConfirms),
+        ).finally(() => {
+          processing = false;
+        });
         break;
 
-      case "state":
+      case 'state':
         session.setScreen(msg.screen);
         break;
 
-      case "result":
+      case 'result':
         deliverResult(msg, pendingResults);
         break;
 
-      case "confirm":
-        deliverConfirm(msg, pendingConfirms, session, openai, model, send, makeExecuteFn(send, session, pendingResults, pendingConfirms));
+      case 'confirm':
+        deliverConfirm(
+          msg,
+          pendingConfirms,
+          session,
+          openai,
+          model,
+          send,
+          makeExecuteFn(send, session, pendingResults, pendingConfirms),
+        );
         break;
 
-      case "llm_config":
+      case 'llm_config':
         // Acknowledge (single-provider server — no-op)
         break;
 
-      case "response_lang_config":
+      case 'response_lang_config':
         // Acknowledge
         break;
     }
@@ -186,12 +202,12 @@ function handleManifest(
   model: string,
 ): void {
   session.setManifest(msg);
-  send({ type: "status", status: "idle" });
+  send({ type: 'status', status: 'idle' });
 
   // Send greeting based on manifest context
   send({
-    type: "chat",
-    from: "agent",
+    type: 'chat',
+    from: 'agent',
     message: buildGreeting(msg),
     final: true,
   });
@@ -207,10 +223,10 @@ function buildGreeting(msg: ManifestMessage): string {
   const fieldCount = screens.reduce((sum, s) => sum + (s.fields?.length ?? 0), 0);
   const actionCount = screens.reduce((sum, s) => sum + (s.actions?.length ?? 0), 0);
 
-  const intro = name ? `Hi, I'm ${name}!` : "Hi!";
-  const roleDesc = role ? ` I'm your ${role}.` : "";
+  const intro = name ? `Hi, I'm ${name}!` : 'Hi!';
+  const roleDesc = role ? ` I'm your ${role}.` : '';
 
-  let capability = "";
+  let capability = '';
   if (screenLabel && fieldCount > 0) {
     capability = ` I can help you with the ${screenLabel} — just tell me what to fill in and I'll handle it.`;
   } else if (fieldCount > 0) {
@@ -228,16 +244,16 @@ async function handleText(
   send: (msg: ServerMessage) => void,
   execute: (seq: number, actions: UIAction[]) => Promise<ResultMessage>,
 ): Promise<void> {
-  send({ type: "status", status: "thinking" });
+  send({ type: 'status', status: 'thinking' });
 
   try {
     await runAgentLoop(openai, model, session, text, execute, send);
   } catch (err) {
-    console.error("[acp-server] Agent error:", err);
-    send({ type: "error", code: "agent_error", message: String(err) });
+    console.error('[acp-server] Agent error:', err);
+    send({ type: 'error', code: 'agent_error', message: String(err) });
   }
 
-  send({ type: "status", status: "idle" });
+  send({ type: 'status', status: 'idle' });
 }
 
 function deliverResult(
@@ -277,11 +293,10 @@ function makeExecuteFn(
 ): (seq: number, actions: UIAction[]) => Promise<ResultMessage> {
   return (seq: number, actions: UIAction[]): Promise<ResultMessage> => {
     // Detect if this is a confirm-only command
-    const isConfirmOnly =
-      actions.length === 1 && actions[0].do === "ask_confirm";
+    const isConfirmOnly = actions.length === 1 && actions[0].do === 'ask_confirm';
 
     // Send command to client
-    send({ type: "command", seq, actions });
+    send({ type: 'command', seq, actions });
 
     if (isConfirmOnly) {
       // Wait for confirm message instead of result
@@ -295,7 +310,7 @@ function makeExecuteFn(
           clearTimeout(timer);
           // Wrap confirmation as a ResultMessage
           resolve({
-            type: "result",
+            type: 'result',
             seq,
             results: [{ index: 0, success: confirmed }],
           });

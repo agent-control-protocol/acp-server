@@ -1,18 +1,18 @@
-import { describe, it, expect, vi } from "vitest";
-import { runAgentLoop } from "../src/agent.js";
-import { Session } from "../src/session.js";
-import type { ServerMessage, ResultMessage, UIAction } from "../src/types.js";
-import { createCrmManifest, createMinimalManifest } from "./helpers/manifest-factory.js";
+import { describe, it, expect, vi } from 'vitest';
+import { runAgentLoop } from '../src/agent.js';
+import { Session } from '../src/session.js';
+import type { ServerMessage, ResultMessage, UIAction } from '../src/types.js';
+import { createCrmManifest, createMinimalManifest } from './helpers/manifest-factory.js';
 import {
   createMockOpenAI,
   textOnlyScenario,
   toolCallScenario,
   parallelToolCallScenario,
   mixedScenario,
-} from "./helpers/mock-openai.js";
+} from './helpers/mock-openai.js';
 
 function makeSession(): Session {
-  const s = new Session("test-session");
+  const s = new Session('test-session');
   s.setManifest(createCrmManifest());
   return s;
 }
@@ -22,9 +22,7 @@ function makeSend(): { send: (msg: ServerMessage) => void; sent: ServerMessage[]
   return { send: (msg) => sent.push(msg), sent };
 }
 
-function makeExecute(
-  results: ResultMessage[] = [],
-): {
+function makeExecute(results: ResultMessage[] = []): {
   execute: (seq: number, actions: UIAction[]) => Promise<ResultMessage>;
   calls: Array<{ seq: number; actions: UIAction[] }>;
 } {
@@ -34,7 +32,7 @@ function makeExecute(
     execute: async (seq, actions) => {
       calls.push({ seq, actions });
       const result = results[callIndex] ?? {
-        type: "result" as const,
+        type: 'result' as const,
         seq,
         results: actions.map((_, i) => ({ index: i, success: true })),
       };
@@ -45,72 +43,72 @@ function makeExecute(
   };
 }
 
-describe("runAgentLoop", () => {
+describe('runAgentLoop', () => {
   // ── Text-only ────────────────────────────────────────────────────────────
 
-  describe("text-only response", () => {
-    it("adds user message to session history", async () => {
+  describe('text-only response', () => {
+    it('adds user message to session history', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
-        responses: [textOnlyScenario("Hello!")],
+        responses: [textOnlyScenario('Hello!')],
       });
       const { send } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Hi", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Hi', execute, send);
 
       const history = session.getHistory();
       // system + user + assistant
       expect(history.length).toBeGreaterThanOrEqual(3);
-      expect(history[1]).toEqual({ role: "user", content: "Hi" });
+      expect(history[1]).toEqual({ role: 'user', content: 'Hi' });
     });
 
-    it("streams chat tokens to send function", async () => {
+    it('streams chat tokens to send function', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
-        responses: [textOnlyScenario("Hello!")],
+        responses: [textOnlyScenario('Hello!')],
       });
       const { send, sent } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Hi", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Hi', execute, send);
 
-      const tokens = sent.filter((m) => m.type === "chat_token");
+      const tokens = sent.filter((m) => m.type === 'chat_token');
       expect(tokens.length).toBeGreaterThan(0);
       // Reconstruct text from tokens
-      const text = tokens.map((t) => (t as any).token).join("");
-      expect(text).toBe("Hello!");
+      const text = tokens.map((t) => (t as any).token).join('');
+      expect(text).toBe('Hello!');
     });
 
-    it("sends final chat message", async () => {
+    it('sends final chat message', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
-        responses: [textOnlyScenario("Hello!")],
+        responses: [textOnlyScenario('Hello!')],
       });
       const { send, sent } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Hi", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Hi', execute, send);
 
-      const chats = sent.filter((m) => m.type === "chat");
+      const chats = sent.filter((m) => m.type === 'chat');
       expect(chats).toHaveLength(1);
       expect(chats[0]).toMatchObject({
-        type: "chat",
-        from: "agent",
-        message: "Hello!",
+        type: 'chat',
+        from: 'agent',
+        message: 'Hello!',
         final: true,
       });
     });
 
-    it("does not call execute when no tool calls", async () => {
+    it('does not call execute when no tool calls', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
-        responses: [textOnlyScenario("Sure!")],
+        responses: [textOnlyScenario('Sure!')],
       });
       const { send } = makeSend();
       const { execute, calls } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Hello", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Hello', execute, send);
 
       expect(calls).toHaveLength(0);
     });
@@ -118,129 +116,127 @@ describe("runAgentLoop", () => {
 
   // ── Tool calls ───────────────────────────────────────────────────────────
 
-  describe("tool calls", () => {
-    it("converts tool calls to UIActions and executes them", async () => {
+  describe('tool calls', () => {
+    it('converts tool calls to UIActions and executes them', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
           // Round 1: tool call
-          toolCallScenario("call-1", "navigate", { screen: "deals" }),
+          toolCallScenario('call-1', 'navigate', { screen: 'deals' }),
           // Round 2: text response
-          textOnlyScenario("Navigated to deals."),
+          textOnlyScenario('Navigated to deals.'),
         ],
       });
       const { send, sent } = makeSend();
       const { execute, calls } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Go to deals", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Go to deals', execute, send);
 
       expect(calls).toHaveLength(1);
-      expect(calls[0].actions).toEqual([{ do: "navigate", screen: "deals" }]);
+      expect(calls[0].actions).toEqual([{ do: 'navigate', screen: 'deals' }]);
     });
 
-    it("sends executing status before execute and thinking after", async () => {
+    it('sends executing status before execute and thinking after', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario("call-1", "focus", { field: "search" }),
-          textOnlyScenario("Done."),
+          toolCallScenario('call-1', 'focus', { field: 'search' }),
+          textOnlyScenario('Done.'),
         ],
       });
       const { send, sent } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Focus search", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Focus search', execute, send);
 
-      const statuses = sent
-        .filter((m) => m.type === "status")
-        .map((m) => (m as any).status);
-      expect(statuses).toContain("executing");
-      expect(statuses).toContain("thinking");
+      const statuses = sent.filter((m) => m.type === 'status').map((m) => (m as any).status);
+      expect(statuses).toContain('executing');
+      expect(statuses).toContain('thinking');
     });
 
-    it("maps results back to tool messages in history", async () => {
+    it('maps results back to tool messages in history', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario("call-1", "fill_field", { field: "contact", value: "Globex" }),
-          textOnlyScenario("Filled."),
+          toolCallScenario('call-1', 'fill_field', { field: 'contact', value: 'Globex' }),
+          textOnlyScenario('Filled.'),
         ],
       });
       const { send } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Fill contact", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Fill contact', execute, send);
 
       const history = session.getHistory();
-      const toolMsgs = history.filter((m) => m.role === "tool");
+      const toolMsgs = history.filter((m) => m.role === 'tool');
       expect(toolMsgs.length).toBeGreaterThanOrEqual(1);
       const content = JSON.parse((toolMsgs[0] as any).content);
       expect(content.success).toBe(true);
-      expect(content.action).toBe("fill");
-      expect(content.field).toBe("contact");
-      expect(content.value).toBe("Globex");
+      expect(content.action).toBe('fill');
+      expect(content.field).toBe('contact');
+      expect(content.value).toBe('Globex');
     });
 
-    it("updates session screen on navigate", async () => {
+    it('updates session screen on navigate', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario("call-1", "navigate", { screen: "settings" }),
-          textOnlyScenario("Done."),
+          toolCallScenario('call-1', 'navigate', { screen: 'settings' }),
+          textOnlyScenario('Done.'),
         ],
       });
       const { send } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Go settings", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Go settings', execute, send);
 
-      expect(session.currentScreen).toBe("settings");
+      expect(session.currentScreen).toBe('settings');
     });
   });
 
   // ── Multi-round ──────────────────────────────────────────────────────────
 
-  describe("multi-round", () => {
-    it("handles 2 rounds of tool calls before final text", async () => {
+  describe('multi-round', () => {
+    it('handles 2 rounds of tool calls before final text', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario("call-1", "navigate", { screen: "deals" }),
-          toolCallScenario("call-2", "fill_field", {
-            field: "contact",
-            value: "Globex",
+          toolCallScenario('call-1', 'navigate', { screen: 'deals' }),
+          toolCallScenario('call-2', 'fill_field', {
+            field: 'contact',
+            value: 'Globex',
           }),
-          textOnlyScenario("Deal created."),
+          textOnlyScenario('Deal created.'),
         ],
       });
       const { send, sent } = makeSend();
       const { execute, calls } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Create deal", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Create deal', execute, send);
 
       expect(calls).toHaveLength(2);
       expect(mockAI.callCount).toBe(3);
-      const finalChat = sent.filter((m) => m.type === "chat");
+      const finalChat = sent.filter((m) => m.type === 'chat');
       expect(finalChat[finalChat.length - 1]).toMatchObject({
-        message: "Deal created.",
+        message: 'Deal created.',
         final: true,
       });
     });
 
-    it("falls back after MAX_ROUNDS (5) with last text", async () => {
+    it('falls back after MAX_ROUNDS (5) with last text', async () => {
       const session = makeSession();
       // 5 rounds of tool calls, no text response
       const responses = Array.from({ length: 5 }, (_, i) =>
-        toolCallScenario(`call-${i}`, "focus", { field: "search" }),
+        toolCallScenario(`call-${i}`, 'focus', { field: 'search' }),
       );
       const mockAI = createMockOpenAI({ responses });
       const { send, sent } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Loop forever", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Loop forever', execute, send);
 
       // Should send a fallback chat
-      const chats = sent.filter((m) => m.type === "chat");
+      const chats = sent.filter((m) => m.type === 'chat');
       expect(chats.length).toBeGreaterThanOrEqual(1);
       expect((chats[chats.length - 1] as any).final).toBe(true);
     });
@@ -248,99 +244,99 @@ describe("runAgentLoop", () => {
     it("sends 'Done.' fallback when no content was ever streamed", async () => {
       const session = makeSession();
       const responses = Array.from({ length: 5 }, (_, i) =>
-        toolCallScenario(`call-${i}`, "focus", { field: "search" }),
+        toolCallScenario(`call-${i}`, 'focus', { field: 'search' }),
       );
       const mockAI = createMockOpenAI({ responses });
       const { send, sent } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Loop", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Loop', execute, send);
 
-      const chats = sent.filter((m) => m.type === "chat");
-      expect((chats[chats.length - 1] as any).message).toBe("Done.");
+      const chats = sent.filter((m) => m.type === 'chat');
+      expect((chats[chats.length - 1] as any).message).toBe('Done.');
     });
   });
 
   // ── ask_confirm flow ────────────────────────────────────────────────────
 
-  describe("ask_confirm", () => {
-    it("detects confirm-only round and injects user_response", async () => {
+  describe('ask_confirm', () => {
+    it('detects confirm-only round and injects user_response', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario("call-1", "ask_confirm", { message: "Are you sure?" }),
-          textOnlyScenario("Action confirmed."),
+          toolCallScenario('call-1', 'ask_confirm', { message: 'Are you sure?' }),
+          textOnlyScenario('Action confirmed.'),
         ],
       });
       const { send } = makeSend();
       const { execute } = makeExecute([
         // Simulate confirmed
-        { type: "result", seq: 0, results: [{ index: 0, success: true }] },
+        { type: 'result', seq: 0, results: [{ index: 0, success: true }] },
       ]);
 
-      await runAgentLoop(mockAI, "mock-model", session, "Delete it", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Delete it', execute, send);
 
       const history = session.getHistory();
-      const toolMsgs = history.filter((m) => m.role === "tool");
+      const toolMsgs = history.filter((m) => m.role === 'tool');
       const confirmResult = JSON.parse((toolMsgs[0] as any).content);
-      expect(confirmResult.user_response).toBe("Yes");
+      expect(confirmResult.user_response).toBe('Yes');
     });
 
     it("injects 'No' when user denies confirmation", async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario("call-1", "ask_confirm", { message: "Delete?" }),
-          textOnlyScenario("Cancelled."),
+          toolCallScenario('call-1', 'ask_confirm', { message: 'Delete?' }),
+          textOnlyScenario('Cancelled.'),
         ],
       });
       const { send } = makeSend();
       const { execute } = makeExecute([
-        { type: "result", seq: 0, results: [{ index: 0, success: false }] },
+        { type: 'result', seq: 0, results: [{ index: 0, success: false }] },
       ]);
 
-      await runAgentLoop(mockAI, "mock-model", session, "Delete", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Delete', execute, send);
 
       const history = session.getHistory();
-      const toolMsgs = history.filter((m) => m.role === "tool");
+      const toolMsgs = history.filter((m) => m.role === 'tool');
       const confirmResult = JSON.parse((toolMsgs[0] as any).content);
-      expect(confirmResult.user_response).toBe("No");
+      expect(confirmResult.user_response).toBe('No');
     });
   });
 
   // ── Error handling ──────────────────────────────────────────────────────
 
-  describe("errors", () => {
-    it("reports tool parse error back to LLM and continues loop", async () => {
+  describe('errors', () => {
+    it('reports tool parse error back to LLM and continues loop', async () => {
       const session = makeSession();
       // First round: unknown tool, second round: text response
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario("call-1", "unknown_tool", { foo: "bar" }),
-          textOnlyScenario("Sorry about that."),
+          toolCallScenario('call-1', 'unknown_tool', { foo: 'bar' }),
+          textOnlyScenario('Sorry about that.'),
         ],
       });
       const { send, sent } = makeSend();
       const { execute, calls } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Do something", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Do something', execute, send);
 
       // Execute should not have been called (unknown tool → no valid actions)
       expect(calls).toHaveLength(0);
       // Should have tool error in history
       const history = session.getHistory();
-      const toolMsgs = history.filter((m) => m.role === "tool");
+      const toolMsgs = history.filter((m) => m.role === 'tool');
       expect(toolMsgs.length).toBeGreaterThanOrEqual(1);
       const errorContent = JSON.parse((toolMsgs[0] as any).content);
-      expect(errorContent.error).toContain("Unknown tool");
+      expect(errorContent.error).toContain('Unknown tool');
     });
 
-    it("reports execution error to LLM and continues", async () => {
+    it('reports execution error to LLM and continues', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario("call-1", "navigate", { screen: "deals" }),
-          textOnlyScenario("An error occurred, let me try again."),
+          toolCallScenario('call-1', 'navigate', { screen: 'deals' }),
+          textOnlyScenario('An error occurred, let me try again.'),
         ],
       });
       const { send, sent } = makeSend();
@@ -348,64 +344,64 @@ describe("runAgentLoop", () => {
       let callCount = 0;
       const execute = async (seq: number, actions: UIAction[]): Promise<ResultMessage> => {
         callCount++;
-        throw new Error("Network timeout");
+        throw new Error('Network timeout');
       };
 
-      await runAgentLoop(mockAI, "mock-model", session, "Navigate", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Navigate', execute, send);
 
       expect(callCount).toBe(1);
       const history = session.getHistory();
-      const toolMsgs = history.filter((m) => m.role === "tool");
+      const toolMsgs = history.filter((m) => m.role === 'tool');
       const errorContent = JSON.parse((toolMsgs[0] as any).content);
       expect(errorContent.success).toBe(false);
-      expect(errorContent.error).toContain("Network timeout");
+      expect(errorContent.error).toContain('Network timeout');
     });
   });
 
   // ── Parallel tool calls ──────────────────────────────────────────────────
 
-  describe("parallel tool calls", () => {
-    it("handles multiple tool calls in one round", async () => {
+  describe('parallel tool calls', () => {
+    it('handles multiple tool calls in one round', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
           parallelToolCallScenario([
-            { id: "call-1", name: "fill_field", args: { field: "contact", value: "Acme" } },
-            { id: "call-2", name: "fill_field", args: { field: "amount", value: 1000 } },
+            { id: 'call-1', name: 'fill_field', args: { field: 'contact', value: 'Acme' } },
+            { id: 'call-2', name: 'fill_field', args: { field: 'amount', value: 1000 } },
           ]),
-          textOnlyScenario("Fields filled."),
+          textOnlyScenario('Fields filled.'),
         ],
       });
       const { send } = makeSend();
       const { execute, calls } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Fill fields", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Fill fields', execute, send);
 
       expect(calls).toHaveLength(1);
       expect(calls[0].actions).toHaveLength(2);
-      expect(calls[0].actions[0]).toMatchObject({ do: "fill", field: "contact" });
-      expect(calls[0].actions[1]).toMatchObject({ do: "fill", field: "amount" });
+      expect(calls[0].actions[0]).toMatchObject({ do: 'fill', field: 'contact' });
+      expect(calls[0].actions[1]).toMatchObject({ do: 'fill', field: 'amount' });
     });
   });
 
   // ── Mixed content + tools ─────────────────────────────────────────────────
 
-  describe("mixed content and tools", () => {
-    it("handles content and tool calls in the same stream", async () => {
+  describe('mixed content and tools', () => {
+    it('handles content and tool calls in the same stream', async () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          mixedScenario("Working on it...", "call-1", "navigate", { screen: "contacts" }),
-          textOnlyScenario("Done."),
+          mixedScenario('Working on it...', 'call-1', 'navigate', { screen: 'contacts' }),
+          textOnlyScenario('Done.'),
         ],
       });
       const { send, sent } = makeSend();
       const { execute, calls } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Go contacts", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Go contacts', execute, send);
 
       // Should have streamed text tokens
-      const tokens = sent.filter((m) => m.type === "chat_token");
+      const tokens = sent.filter((m) => m.type === 'chat_token');
       expect(tokens.length).toBeGreaterThan(0);
       // Should have executed the tool call
       expect(calls).toHaveLength(1);
@@ -414,20 +410,20 @@ describe("runAgentLoop", () => {
 
   // ── Manifest-less session ────────────────────────────────────────────────
 
-  describe("no manifest", () => {
-    it("runs without tools when manifest is null", async () => {
-      const session = new Session("test");
+  describe('no manifest', () => {
+    it('runs without tools when manifest is null', async () => {
+      const session = new Session('test');
       const mockAI = createMockOpenAI({
-        responses: [textOnlyScenario("Hello!")],
+        responses: [textOnlyScenario('Hello!')],
       });
       const { send, sent } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, "mock-model", session, "Hi", execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Hi', execute, send);
 
       // Should work fine — no tools
       expect(mockAI.calls[0].tools).toBeUndefined();
-      const chats = sent.filter((m) => m.type === "chat");
+      const chats = sent.filter((m) => m.type === 'chat');
       expect(chats).toHaveLength(1);
     });
   });

@@ -6,6 +6,9 @@
 
 > ACP Reference Server — a minimal TypeScript server implementing the [Agent Control Protocol](https://acp-protocol.org).
 
+> [!NOTE]
+> This is a reference implementation for development, testing, and learning. For production workloads, implement the ACP protocol directly in your language/framework of choice, or see [Vocall Engine](https://vocall.emitta.com.br) for a production-grade implementation.
+
 **MCP reads. ACP acts.** While MCP connects models to data, ACP connects AI agents to existing application user interfaces — letting them navigate screens, fill forms, click buttons, open modals, and confirm destructive actions.
 
 ## What is ACP?

@@ -1,5 +1,5 @@
-import { WebSocket } from "ws";
-import type { ServerMessage } from "../../src/types.js";
+import { WebSocket } from 'ws';
+import type { ServerMessage } from '../../src/types.js';
 
 /**
  * WebSocket test client for integration testing the ACP server.
@@ -18,9 +18,9 @@ export class WSTestClient {
   async connect(url: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.ws = new WebSocket(url);
-      this.ws.on("open", () => resolve());
-      this.ws.on("error", reject);
-      this.ws.on("message", (data: Buffer) => {
+      this.ws.on('open', () => resolve());
+      this.ws.on('error', reject);
+      this.ws.on('message', (data: Buffer) => {
         const msg: ServerMessage = JSON.parse(data.toString());
         this.messages.push(msg);
         // Check waiters
@@ -39,7 +39,7 @@ export class WSTestClient {
   /** Send a JSON message to the server. */
   send(msg: unknown): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("WebSocket not connected");
+      throw new Error('WebSocket not connected');
     }
     this.ws.send(JSON.stringify(msg));
   }
@@ -75,11 +75,7 @@ export class WSTestClient {
       const timer = setTimeout(() => {
         const idx = this.waiters.findIndex((w) => w.resolve === (resolve as any));
         if (idx >= 0) this.waiters.splice(idx, 1);
-        reject(
-          new Error(
-            `Timeout waiting for ${count} messages (got ${this.messages.length})`,
-          ),
-        );
+        reject(new Error(`Timeout waiting for ${count} messages (got ${this.messages.length})`));
       }, timeout);
       this.waiters.push({
         predicate: () => this.messages.length >= count,
@@ -106,7 +102,7 @@ export class WSTestClient {
         ws.terminate();
         resolve();
       }, 1000);
-      ws.on("close", () => {
+      ws.on('close', () => {
         clearTimeout(timer);
         resolve();
       });

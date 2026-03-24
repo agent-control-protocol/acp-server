@@ -1,4 +1,4 @@
-import type { ChatCompletionChunk } from "openai/resources/chat/completions";
+import type { ChatCompletionChunk } from 'openai/resources/chat/completions';
 
 /** A single chunk delta for building mock streams. */
 interface MockDelta {
@@ -14,10 +14,10 @@ interface MockDelta {
 /** Builds a ChatCompletionChunk from a delta. */
 function makeChunk(delta: MockDelta): ChatCompletionChunk {
   return {
-    id: "chatcmpl-mock",
-    object: "chat.completion.chunk",
+    id: 'chatcmpl-mock',
+    object: 'chat.completion.chunk',
     created: Date.now(),
-    model: "mock-model",
+    model: 'mock-model',
     choices: [
       {
         index: 0,
@@ -62,8 +62,8 @@ export function toolCallScenario(
         {
           index: 0,
           id: callId,
-          type: "function",
-          function: { name, arguments: "" },
+          type: 'function',
+          function: { name, arguments: '' },
         },
       ],
     },
@@ -89,8 +89,8 @@ export function parallelToolCallScenario(
     tool_calls: calls.map((c, i) => ({
       index: i,
       id: c.id,
-      type: "function",
-      function: { name: c.name, arguments: "" },
+      type: 'function',
+      function: { name: c.name, arguments: '' },
     })),
   });
   // Subsequent chunks: arguments one by one
@@ -114,10 +114,7 @@ export function mixedScenario(
   name: string,
   args: Record<string, unknown>,
 ): MockDelta[] {
-  return [
-    ...textOnlyScenario(text),
-    ...toolCallScenario(callId, name, args),
-  ];
+  return [...textOnlyScenario(text), ...toolCallScenario(callId, name, args)];
 }
 
 export interface MockOpenAIOptions {
@@ -144,7 +141,7 @@ export function createMockOpenAI(options: MockOpenAIOptions) {
           calls.push({ messages: params.messages, tools: params.tools });
           if (options.throwOnFirstCall && callIndex === 0) {
             callIndex++;
-            throw new Error(options.errorMessage ?? "Mock error");
+            throw new Error(options.errorMessage ?? 'Mock error');
           }
           const deltas = options.responses[callIndex] ?? [];
           callIndex++;
