@@ -174,7 +174,9 @@ npm start       # Run built version
 
 ## Related
 
-- [ACP Specification](https://acp-protocol.org) — the protocol spec and JSON Schema
+- [ACP Specification](https://github.com/agent-control-protocol/acp) — the protocol spec and JSON Schema
+- [ACP Demo](https://github.com/agent-control-protocol/acp-demo) — interactive demo (Pet Registration form)
+- [Live Sandbox](https://primoia.ai/sandbox) — try ACP without installing anything
 - [ACP Conformance Suite](https://github.com/agent-control-protocol/acp/tree/main/conformance) — test fixtures and validators
 
 > **MCP reads. ACP acts.** MCP connects models to data. ACP connects agents to interfaces.
