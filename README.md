@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@acprotocol/server)](https://www.npmjs.com/package/@acprotocol/server)
 [![license](https://img.shields.io/npm/l/@acprotocol/server)](./LICENSE)
-[![tests](https://img.shields.io/badge/tests-211%20passed-brightgreen)]()
+[![tests](https://img.shields.io/badge/tests-195%20passed-brightgreen)]()
 
 > ACP Reference Server — a minimal TypeScript server implementing the [Agent Control Protocol](https://acp-protocol.org).
 
@@ -50,8 +50,8 @@ SDK                          Engine                         LLM
  │                             │                              │
  │───── text ─────────────────►│                              │
  │◄──── status: thinking ──────│───── stream completion ─────►│
- │◄──── chat_token ────────────│◄──── delta.content ──────────│
- │◄──── chat_token ────────────│◄──── delta.content ──────────│
+ │◄──── chat (delta) ──────────│◄──── delta.content ──────────│
+ │◄──── chat (delta) ──────────│◄──── delta.content ──────────│
  │◄──── status: executing ─────│◄──── delta.tool_calls ───────│
  │◄──── command {seq, actions}─│                              │
  │───── result {seq, results}─►│───── tool results ──────────►│
@@ -140,9 +140,9 @@ Builds a multi-section LLM system prompt from an ACP manifest. Includes identity
 
 #### `manifestToTools(manifest): ChatCompletionTool[]`
 
-Converts an ACP manifest into OpenAI-compatible tool definitions. Generates 8 base tools plus 2 modal tools when modals are present.
+Converts an ACP manifest into OpenAI-compatible tool definitions. Generates 6 base tools plus 2 modal tools when modals are present.
 
-**Tools:** `navigate`, `fill_field`, `clear_field`, `click_action`, `highlight`, `focus`, `ask_confirm`, `show_toast`, `open_modal`, `close_modal`
+**Tools:** `navigate`, `set_field`, `clear_field`, `click_action`, `ask_confirm`, `show_toast`, `open_modal`, `close_modal`
 
 #### `toolCallToUIAction(name, argsJSON): UIAction`
 
@@ -150,7 +150,7 @@ Converts an OpenAI tool call into an ACP UIAction for inclusion in a `command` m
 
 #### `runAgentLoop(openai, model, session, text, execute, send): Promise<void>`
 
-The core agent loop. Streams LLM completions, accumulates tool calls, executes UI actions on the client, and maps results back to the LLM. Runs up to 5 rounds before sending a fallback response.
+The core agent loop. Streams LLM completions, accumulates tool calls, executes UI actions on the client, and maps results back to the LLM. Runs up to 15 rounds before sending a fallback response.
 
 ## Testing
 
