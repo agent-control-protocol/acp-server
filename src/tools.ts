@@ -4,8 +4,8 @@ import type { ManifestMessage, UIAction, FieldDescriptor } from './types.js';
 /**
  * Converts an ACP manifest into OpenAI-compatible tool definitions.
  *
- * Generates 8 base tools (navigate, fill_field, clear_field, click_action,
- * highlight, focus, ask_confirm, show_toast) plus 2 modal tools
+ * Generates 6 base tools (navigate, set_field, clear_field, click_action,
+ * ask_confirm, show_toast) plus 2 modal tools
  * (open_modal, close_modal) when the manifest contains modal descriptors.
  *
  * Field, action, and modal IDs are deduplicated across all screens.
@@ -35,11 +35,9 @@ export function manifestToTools(manifest: ManifestMessage): ChatCompletionTool[]
 
   const tools: ChatCompletionTool[] = [
     navigateTool(screenIDs, screenLabels),
-    fillFieldTool(allFields),
+    setFieldTool(allFields),
     clearFieldTool(allFieldIDs),
     clickActionTool(allActionIDs),
-    highlightTool(allFieldIDs),
-    focusTool(allFieldIDs),
     askConfirmTool(),
     showToastTool(),
   ];
@@ -54,8 +52,8 @@ export function manifestToTools(manifest: ManifestMessage): ChatCompletionTool[]
 /**
  * Converts an OpenAI tool call into an ACP UIAction.
  *
- * Supports all 10 tool names: navigate, fill_field, clear_field, click_action,
- * highlight, focus, open_modal, close_modal, ask_confirm, show_toast.
+ * Supports all 8 tool names: navigate, set_field, clear_field, click_action,
+ * open_modal, close_modal, ask_confirm, show_toast.
  *
  * @param name - The tool function name from the LLM response.
  * @param argsJSON - The JSON-encoded arguments string from the LLM response.
@@ -64,8 +62,8 @@ export function manifestToTools(manifest: ManifestMessage): ChatCompletionTool[]
  *
  * @example
  * ```ts
- * const action = toolCallToUIAction("fill_field", '{"field":"name","value":"Alice"}');
- * // => { do: "fill", field: "name", value: "Alice", animate: "typewriter" }
+ * const action = toolCallToUIAction("set_field", '{"field":"name","value":"Alice"}');
+ * // => { do: "set_field", field: "name", value: "Alice" }
  * ```
  */
 export function toolCallToUIAction(name: string, argsJSON: string): UIAction {
@@ -80,13 +78,11 @@ export function toolCallToUIAction(name: string, argsJSON: string): UIAction {
     case 'navigate':
       return { do: 'navigate', screen: str(args.screen) };
 
-    case 'fill_field':
+    case 'set_field':
       return {
-        do: 'fill',
+        do: 'set_field',
         field: str(args.field),
         value: args.value,
-        animate: (str(args.animate) as UIAction['animate']) || 'typewriter',
-        speed: num(args.speed) || undefined,
       };
 
     case 'clear_field':
@@ -94,16 +90,6 @@ export function toolCallToUIAction(name: string, argsJSON: string): UIAction {
 
     case 'click_action':
       return { do: 'click', action: str(args.action) };
-
-    case 'highlight':
-      return {
-        do: 'highlight',
-        field: str(args.field),
-        duration: num(args.duration) || undefined,
-      };
-
-    case 'focus':
-      return { do: 'focus', field: str(args.field) };
 
     case 'open_modal':
       return {
@@ -150,7 +136,7 @@ function navigateTool(screenIDs: string[], screenLabels: string[]): ChatCompleti
   });
 }
 
-function fillFieldTool(fields: FieldDescriptor[]): ChatCompletionTool {
+function setFieldTool(fields: FieldDescriptor[]): ChatCompletionTool {
   const fieldDescriptions = fields.map((f) => {
     let desc = `${f.id} (${f.type})`;
     if (f.options?.length) {
@@ -162,21 +148,15 @@ function fillFieldTool(fields: FieldDescriptor[]): ChatCompletionTool {
   });
 
   return makeTool(
-    'fill_field',
-    `Fill a form field with a value. Available fields:\n${fieldDescriptions.join('\n')}`,
+    'set_field',
+    `Set a form field value. Available fields:\n${fieldDescriptions.join('\n')}`,
     {
       type: 'object',
       properties: {
-        field: { type: 'string', description: 'Field ID to fill' },
+        field: { type: 'string', description: 'Field ID to set' },
         value: {
           description:
             'Value to set. For select fields, use one of the valid option values listed above.',
-        },
-        animate: {
-          type: 'string',
-          enum: ['typewriter', 'count_up', 'fade_in', 'none'],
-          default: 'typewriter',
-          description: 'Animation style for filling',
         },
       },
       required: ['field', 'value'],
@@ -206,31 +186,6 @@ function clickActionTool(actionIDs: string[]): ChatCompletionTool {
       required: ['action'],
     },
   );
-}
-
-function highlightTool(fieldIDs: string[]): ChatCompletionTool {
-  return makeTool('highlight', "Temporarily highlight a field to draw the user's attention", {
-    type: 'object',
-    properties: {
-      field: { type: 'string', description: 'Field ID to highlight' },
-      duration: {
-        type: 'integer',
-        default: 2000,
-        description: 'Highlight duration in milliseconds',
-      },
-    },
-    required: ['field'],
-  });
-}
-
-function focusTool(fieldIDs: string[]): ChatCompletionTool {
-  return makeTool('focus', 'Set keyboard focus on a field', {
-    type: 'object',
-    properties: {
-      field: { type: 'string', description: 'Field ID to focus' },
-    },
-    required: ['field'],
-  });
 }
 
 function openModalTool(modalIDs: string[]): ChatCompletionTool {

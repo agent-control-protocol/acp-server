@@ -8,27 +8,25 @@ import {
 } from './helpers/manifest-factory.js';
 
 describe('manifestToTools', () => {
-  it('returns 8 base tools when no modals', () => {
+  it('returns 6 base tools when no modals', () => {
     const manifest = createMinimalManifest();
     const tools = manifestToTools(manifest);
-    expect(tools).toHaveLength(8);
+    expect(tools).toHaveLength(6);
     const names = tools.map((t) => t.function.name);
     expect(names).toEqual([
       'navigate',
-      'fill_field',
+      'set_field',
       'clear_field',
       'click_action',
-      'highlight',
-      'focus',
       'ask_confirm',
       'show_toast',
     ]);
   });
 
-  it('returns 10 tools when modals are present', () => {
+  it('returns 8 tools when modals are present', () => {
     const manifest = createCrmManifest();
     const tools = manifestToTools(manifest);
-    expect(tools).toHaveLength(10);
+    expect(tools).toHaveLength(8);
     const names = tools.map((t) => t.function.name);
     expect(names).toContain('open_modal');
     expect(names).toContain('close_modal');
@@ -50,21 +48,13 @@ describe('manifestToTools', () => {
     expect(nav.function.description).toContain('deals (New Deal)');
   });
 
-  it('fill_field lists all field IDs in description', () => {
+  it('set_field lists all field IDs in description', () => {
     const manifest = createCrmManifest();
     const tools = manifestToTools(manifest);
-    const fill = tools.find((t) => t.function.name === 'fill_field')!;
-    expect(fill.function.description).toContain('search');
-    expect(fill.function.description).toContain('contact');
-    expect(fill.function.description).toContain('amount');
-  });
-
-  it('fill_field has animate enum', () => {
-    const manifest = createCrmManifest();
-    const tools = manifestToTools(manifest);
-    const fill = tools.find((t) => t.function.name === 'fill_field')!;
-    const params = fill.function.parameters as any;
-    expect(params.properties.animate.enum).toEqual(['typewriter', 'count_up', 'fade_in', 'none']);
+    const setField = tools.find((t) => t.function.name === 'set_field')!;
+    expect(setField.function.description).toContain('search');
+    expect(setField.function.description).toContain('contact');
+    expect(setField.function.description).toContain('amount');
   });
 
   it('click_action lists action IDs in description', () => {
@@ -95,8 +85,8 @@ describe('manifestToTools', () => {
     // settings has 'company_name' and 'timezone'
     const manifest = createCrmManifest();
     const tools = manifestToTools(manifest);
-    const fill = tools.find((t) => t.function.name === 'fill_field')!;
-    const desc = fill.function.description!;
+    const setField = tools.find((t) => t.function.name === 'set_field')!;
+    const desc = setField.function.description!;
     // Check each field appears only once by counting occurrences
     const searchMatches = desc.match(/\bsearch\b/g);
     expect(searchMatches).toHaveLength(1);
@@ -132,31 +122,15 @@ describe('toolCallToUIAction', () => {
     expect(action).toEqual({ do: 'navigate', screen: 'deals' });
   });
 
-  it('converts fill_field with default animation', () => {
+  it('converts set_field', () => {
     const action = toolCallToUIAction(
-      'fill_field',
+      'set_field',
       JSON.stringify({ field: 'name', value: 'Alice' }),
     );
     expect(action).toEqual({
-      do: 'fill',
+      do: 'set_field',
       field: 'name',
       value: 'Alice',
-      animate: 'typewriter',
-      speed: undefined,
-    });
-  });
-
-  it('converts fill_field with explicit animation and speed', () => {
-    const action = toolCallToUIAction(
-      'fill_field',
-      JSON.stringify({ field: 'amount', value: 2500, animate: 'count_up', speed: 50 }),
-    );
-    expect(action).toEqual({
-      do: 'fill',
-      field: 'amount',
-      value: 2500,
-      animate: 'count_up',
-      speed: 50,
     });
   });
 
@@ -168,24 +142,6 @@ describe('toolCallToUIAction', () => {
   it('converts click_action', () => {
     const action = toolCallToUIAction('click_action', JSON.stringify({ action: 'create_deal' }));
     expect(action).toEqual({ do: 'click', action: 'create_deal' });
-  });
-
-  it('converts highlight with duration', () => {
-    const action = toolCallToUIAction(
-      'highlight',
-      JSON.stringify({ field: 'email', duration: 3000 }),
-    );
-    expect(action).toEqual({ do: 'highlight', field: 'email', duration: 3000 });
-  });
-
-  it('converts highlight without duration', () => {
-    const action = toolCallToUIAction('highlight', JSON.stringify({ field: 'email' }));
-    expect(action).toEqual({ do: 'highlight', field: 'email', duration: undefined });
-  });
-
-  it('converts focus', () => {
-    const action = toolCallToUIAction('focus', JSON.stringify({ field: 'search' }));
-    expect(action).toEqual({ do: 'focus', field: 'search' });
   });
 
   it('converts open_modal with query', () => {
@@ -246,26 +202,11 @@ describe('toolCallToUIAction', () => {
   });
 
   it('handles empty args object', () => {
-    const action = toolCallToUIAction('fill_field', '{}');
+    const action = toolCallToUIAction('set_field', '{}');
     expect(action).toEqual({
-      do: 'fill',
+      do: 'set_field',
       field: '',
       value: undefined,
-      animate: 'typewriter',
-      speed: undefined,
     });
-  });
-
-  it('coerces non-string field to empty string', () => {
-    const action = toolCallToUIAction('focus', JSON.stringify({ field: 123 }));
-    expect(action).toEqual({ do: 'focus', field: '' });
-  });
-
-  it('coerces non-number speed to undefined (via 0)', () => {
-    const action = toolCallToUIAction(
-      'fill_field',
-      JSON.stringify({ field: 'x', value: 'y', speed: 'fast' }),
-    );
-    expect(action.speed).toBeUndefined();
   });
 });

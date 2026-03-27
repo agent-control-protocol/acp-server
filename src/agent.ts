@@ -5,7 +5,7 @@ import type { UIAction, ResultMessage, ServerMessage } from './types.js';
 import { manifestToTools, toolCallToUIAction } from './tools.js';
 
 /** Maximum number of LLM rounds before sending a fallback response. */
-const MAX_ROUNDS = 5;
+const MAX_ROUNDS = 15;
 
 /** Callback to send a server message to the client. */
 export type SendFn = (msg: ServerMessage) => void;
@@ -25,9 +25,9 @@ export type ExecuteFn = (seq: number, actions: UIAction[]) => Promise<ResultMess
 /**
  * Runs the streaming agent loop: LLM call → stream tokens → execute tool calls → repeat.
  *
- * The loop processes up to {@link MAX_ROUNDS} (5) rounds of tool calls.
+ * The loop processes up to {@link MAX_ROUNDS} (15) rounds of tool calls.
  * In each round:
- * 1. Streams the LLM response, forwarding `chat_token` messages in real-time
+ * 1. Streams the LLM response, forwarding `chat` delta messages in real-time
  * 2. Accumulates tool call deltas from the stream
  * 3. If no tool calls → sends a final `chat` message and returns
  * 4. Converts tool calls to UIActions via {@link toolCallToUIAction}
@@ -83,7 +83,7 @@ export async function runAgentLoop(
       // Stream content tokens
       if (delta.content) {
         contentBuf += delta.content;
-        send({ type: 'chat_token', token: delta.content });
+        send({ type: 'chat', from: 'agent', message: delta.content, delta: true });
       }
 
       // Accumulate tool call deltas
@@ -191,7 +191,7 @@ export async function runAgentLoop(
         session.setScreen(m.action.screen!);
         result.screen = m.action.screen;
       }
-      if (m.action.do === 'fill') {
+      if (m.action.do === 'set_field') {
         result.field = m.action.field;
         result.value = m.action.value;
       }

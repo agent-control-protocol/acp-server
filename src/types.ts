@@ -115,21 +115,14 @@ export interface ActionResult {
 
 export type UIActionDo =
   | 'navigate'
-  | 'fill'
+  | 'set_field'
   | 'clear'
-  | 'select'
   | 'click'
-  | 'highlight'
-  | 'focus'
-  | 'scroll_to'
   | 'show_toast'
   | 'ask_confirm'
   | 'open_modal'
-  | 'close_modal'
-  | 'enable'
-  | 'disable';
+  | 'close_modal';
 
-export type AnimationType = 'typewriter' | 'count_up' | 'fade_in' | 'none';
 export type ToastLevel = 'info' | 'success' | 'warning' | 'error';
 
 export interface UIAction {
@@ -141,8 +134,6 @@ export interface UIAction {
   value?: unknown;
   query?: string;
   message?: string;
-  animate?: AnimationType;
-  speed?: number;
   duration?: number;
   level?: ToastLevel;
 }
@@ -224,12 +215,8 @@ export interface ChatMessage {
   type: 'chat';
   from: 'agent' | 'user' | 'system';
   message: string;
+  delta?: boolean;
   final?: boolean;
-}
-
-export interface ChatTokenMessage {
-  type: 'chat_token';
-  token: string;
 }
 
 export type AgentStatus = 'idle' | 'thinking' | 'executing';
@@ -249,6 +236,5 @@ export type ServerMessage =
   | ConfigResponse
   | CommandMessage
   | ChatMessage
-  | ChatTokenMessage
   | StatusMessage
   | ErrorMessage;

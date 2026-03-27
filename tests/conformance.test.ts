@@ -72,8 +72,8 @@ describe('ACP Schema Conformance', () => {
         msg: { type: 'chat', from: 'agent', message: 'Hello!', final: true },
       },
       {
-        label: 'chat_token',
-        msg: { type: 'chat_token', token: 'Hel' },
+        label: 'chat delta',
+        msg: { type: 'chat', from: 'agent', message: 'Hel', delta: true },
       },
       {
         label: 'error',
@@ -88,17 +88,15 @@ describe('ACP Schema Conformance', () => {
         },
       },
       {
-        label: 'command with fill',
+        label: 'command with set_field',
         msg: {
           type: 'command',
           seq: 1,
           actions: [
             {
-              do: 'fill',
+              do: 'set_field',
               field: 'contact',
               value: 'Acme Corp',
-              animate: 'typewriter',
-              speed: 30,
             },
           ],
         },
@@ -141,23 +139,17 @@ describe('ACP Schema Conformance', () => {
     const toolCalls: Array<{ name: string; args: string; label: string }> = [
       { name: 'navigate', args: '{"screen":"home"}', label: 'navigate' },
       {
-        name: 'fill_field',
-        args: '{"field":"name","value":"Alice","animate":"typewriter","speed":30}',
-        label: 'fill with animation',
+        name: 'set_field',
+        args: '{"field":"name","value":"Alice"}',
+        label: 'set_field text',
       },
       {
-        name: 'fill_field',
-        args: '{"field":"amount","value":1000,"animate":"count_up"}',
-        label: 'fill with count_up',
+        name: 'set_field',
+        args: '{"field":"amount","value":1000}',
+        label: 'set_field number',
       },
       { name: 'clear_field', args: '{"field":"notes"}', label: 'clear' },
       { name: 'click_action', args: '{"action":"submit"}', label: 'click' },
-      {
-        name: 'highlight',
-        args: '{"field":"email","duration":2000}',
-        label: 'highlight',
-      },
-      { name: 'focus', args: '{"field":"search"}', label: 'focus' },
       {
         name: 'open_modal',
         args: '{"modal":"picker","query":"test"}',

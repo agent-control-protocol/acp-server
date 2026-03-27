@@ -202,11 +202,6 @@ describe('buildSystemPrompt', () => {
       expect(prompt).toContain('## Rules');
     });
 
-    it('includes typewriter animation rule', () => {
-      const prompt = buildSystemPrompt(createMinimalManifest());
-      expect(prompt).toContain('animate="typewriter"');
-    });
-
     it('includes ask_confirm rule', () => {
       const prompt = buildSystemPrompt(createMinimalManifest());
       expect(prompt).toContain(
@@ -214,9 +209,9 @@ describe('buildSystemPrompt', () => {
       );
     });
 
-    it('includes batch fill rule', () => {
+    it('includes batch set_field rule', () => {
       const prompt = buildSystemPrompt(createMinimalManifest());
-      expect(prompt).toContain('Do NOT fill one field at a time');
+      expect(prompt).toContain('Do NOT set one field at a time');
     });
   });
 

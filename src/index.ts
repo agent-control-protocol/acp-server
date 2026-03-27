@@ -61,14 +61,12 @@ export type {
   ConfigResponse,
   CommandMessage,
   ChatMessage,
-  ChatTokenMessage,
   StatusMessage,
   ErrorMessage,
 
   // UI types
   UIAction,
   UIActionDo,
-  AnimationType,
   ToastLevel,
 
   // Descriptor types

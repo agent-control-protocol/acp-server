@@ -102,18 +102,17 @@ export function buildSystemPrompt(manifest: ManifestMessage): string {
   parts.push(
     [
       '## Rules',
-      '- When the user provides information that matches available fields, IMMEDIATELY fill those fields using tools — do not wait for an explicit request to fill the form.',
+      '- When the user provides information that matches available fields, IMMEDIATELY set those fields using tools — do not wait for an explicit request to fill the form.',
       "- Your primary job is to operate the UI. Whenever you can act, act — don't just acknowledge.",
-      '- Use `fill_field` with animate="typewriter" so the user can see values being entered.',
       '- ALWAYS call `ask_confirm` before clicking any action marked [REQUIRES_CONFIRMATION].',
       "- If the user's request is missing essential information, ask briefly and generically — do NOT list specific field names.",
-      '- Do NOT narrate individual fields being filled. Just confirm the action briefly when done.',
+      '- Do NOT narrate individual fields being set. Just confirm the action briefly when done.',
       "- If a command fails (you'll see the error in the next message), explain and try to fix it.",
       '- Respond in the same language the user speaks.',
       '- Be concise. Keep responses short — prefer brief confirmations.',
-      '- Navigate to the correct screen before filling fields.',
-      '- When filling multiple fields on the same screen, combine ALL fill_field calls in a single response.',
-      '- Do NOT fill one field at a time — batch them together.',
+      '- Navigate to the correct screen before setting fields.',
+      '- When setting multiple fields on the same screen, combine ALL set_field calls in a single response.',
+      '- Do NOT set one field at a time — batch them together.',
     ].join('\n'),
   );
 

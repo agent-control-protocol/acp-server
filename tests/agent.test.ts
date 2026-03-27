@@ -73,10 +73,10 @@ describe('runAgentLoop', () => {
 
       await runAgentLoop(mockAI, 'mock-model', session, 'Hi', execute, send);
 
-      const tokens = sent.filter((m) => m.type === 'chat_token');
-      expect(tokens.length).toBeGreaterThan(0);
-      // Reconstruct text from tokens
-      const text = tokens.map((t) => (t as any).token).join('');
+      const deltas = sent.filter((m) => m.type === 'chat' && (m as any).delta === true);
+      expect(deltas.length).toBeGreaterThan(0);
+      // Reconstruct text from deltas
+      const text = deltas.map((t) => (t as any).message).join('');
       expect(text).toBe('Hello!');
     });
 
@@ -90,9 +90,11 @@ describe('runAgentLoop', () => {
 
       await runAgentLoop(mockAI, 'mock-model', session, 'Hi', execute, send);
 
-      const chats = sent.filter((m) => m.type === 'chat');
-      expect(chats).toHaveLength(1);
-      expect(chats[0]).toMatchObject({
+      const finalChats = sent.filter(
+        (m) => m.type === 'chat' && (m as any).final === true,
+      );
+      expect(finalChats).toHaveLength(1);
+      expect(finalChats[0]).toMatchObject({
         type: 'chat',
         from: 'agent',
         message: 'Hello!',
@@ -140,14 +142,14 @@ describe('runAgentLoop', () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario('call-1', 'focus', { field: 'search' }),
+          toolCallScenario('call-1', 'clear_field', { field: 'search' }),
           textOnlyScenario('Done.'),
         ],
       });
       const { send, sent } = makeSend();
       const { execute } = makeExecute();
 
-      await runAgentLoop(mockAI, 'mock-model', session, 'Focus search', execute, send);
+      await runAgentLoop(mockAI, 'mock-model', session, 'Clear search', execute, send);
 
       const statuses = sent.filter((m) => m.type === 'status').map((m) => (m as any).status);
       expect(statuses).toContain('executing');
@@ -158,7 +160,7 @@ describe('runAgentLoop', () => {
       const session = makeSession();
       const mockAI = createMockOpenAI({
         responses: [
-          toolCallScenario('call-1', 'fill_field', { field: 'contact', value: 'Globex' }),
+          toolCallScenario('call-1', 'set_field', { field: 'contact', value: 'Globex' }),
           textOnlyScenario('Filled.'),
         ],
       });
@@ -172,7 +174,7 @@ describe('runAgentLoop', () => {
       expect(toolMsgs.length).toBeGreaterThanOrEqual(1);
       const content = JSON.parse((toolMsgs[0] as any).content);
       expect(content.success).toBe(true);
-      expect(content.action).toBe('fill');
+      expect(content.action).toBe('set_field');
       expect(content.field).toBe('contact');
       expect(content.value).toBe('Globex');
     });
@@ -202,7 +204,7 @@ describe('runAgentLoop', () => {
       const mockAI = createMockOpenAI({
         responses: [
           toolCallScenario('call-1', 'navigate', { screen: 'deals' }),
-          toolCallScenario('call-2', 'fill_field', {
+          toolCallScenario('call-2', 'set_field', {
             field: 'contact',
             value: 'Globex',
           }),
@@ -223,11 +225,11 @@ describe('runAgentLoop', () => {
       });
     });
 
-    it('falls back after MAX_ROUNDS (5) with last text', async () => {
+    it('falls back after MAX_ROUNDS (15) with last text', async () => {
       const session = makeSession();
-      // 5 rounds of tool calls, no text response
-      const responses = Array.from({ length: 5 }, (_, i) =>
-        toolCallScenario(`call-${i}`, 'focus', { field: 'search' }),
+      // 15 rounds of tool calls, no text response
+      const responses = Array.from({ length: 15 }, (_, i) =>
+        toolCallScenario(`call-${i}`, 'clear_field', { field: 'search' }),
       );
       const mockAI = createMockOpenAI({ responses });
       const { send, sent } = makeSend();
@@ -236,15 +238,15 @@ describe('runAgentLoop', () => {
       await runAgentLoop(mockAI, 'mock-model', session, 'Loop forever', execute, send);
 
       // Should send a fallback chat
-      const chats = sent.filter((m) => m.type === 'chat');
+      const chats = sent.filter((m) => m.type === 'chat' && (m as any).final === true);
       expect(chats.length).toBeGreaterThanOrEqual(1);
       expect((chats[chats.length - 1] as any).final).toBe(true);
     });
 
     it("sends 'Done.' fallback when no content was ever streamed", async () => {
       const session = makeSession();
-      const responses = Array.from({ length: 5 }, (_, i) =>
-        toolCallScenario(`call-${i}`, 'focus', { field: 'search' }),
+      const responses = Array.from({ length: 15 }, (_, i) =>
+        toolCallScenario(`call-${i}`, 'clear_field', { field: 'search' }),
       );
       const mockAI = createMockOpenAI({ responses });
       const { send, sent } = makeSend();
@@ -252,7 +254,7 @@ describe('runAgentLoop', () => {
 
       await runAgentLoop(mockAI, 'mock-model', session, 'Loop', execute, send);
 
-      const chats = sent.filter((m) => m.type === 'chat');
+      const chats = sent.filter((m) => m.type === 'chat' && (m as any).final === true);
       expect((chats[chats.length - 1] as any).message).toBe('Done.');
     });
   });
@@ -366,8 +368,8 @@ describe('runAgentLoop', () => {
       const mockAI = createMockOpenAI({
         responses: [
           parallelToolCallScenario([
-            { id: 'call-1', name: 'fill_field', args: { field: 'contact', value: 'Acme' } },
-            { id: 'call-2', name: 'fill_field', args: { field: 'amount', value: 1000 } },
+            { id: 'call-1', name: 'set_field', args: { field: 'contact', value: 'Acme' } },
+            { id: 'call-2', name: 'set_field', args: { field: 'amount', value: 1000 } },
           ]),
           textOnlyScenario('Fields filled.'),
         ],
@@ -379,8 +381,8 @@ describe('runAgentLoop', () => {
 
       expect(calls).toHaveLength(1);
       expect(calls[0].actions).toHaveLength(2);
-      expect(calls[0].actions[0]).toMatchObject({ do: 'fill', field: 'contact' });
-      expect(calls[0].actions[1]).toMatchObject({ do: 'fill', field: 'amount' });
+      expect(calls[0].actions[0]).toMatchObject({ do: 'set_field', field: 'contact' });
+      expect(calls[0].actions[1]).toMatchObject({ do: 'set_field', field: 'amount' });
     });
   });
 
@@ -400,9 +402,9 @@ describe('runAgentLoop', () => {
 
       await runAgentLoop(mockAI, 'mock-model', session, 'Go contacts', execute, send);
 
-      // Should have streamed text tokens
-      const tokens = sent.filter((m) => m.type === 'chat_token');
-      expect(tokens.length).toBeGreaterThan(0);
+      // Should have streamed text deltas
+      const deltas = sent.filter((m) => m.type === 'chat' && (m as any).delta === true);
+      expect(deltas.length).toBeGreaterThan(0);
       // Should have executed the tool call
       expect(calls).toHaveLength(1);
     });
@@ -423,8 +425,10 @@ describe('runAgentLoop', () => {
 
       // Should work fine — no tools
       expect(mockAI.calls[0].tools).toBeUndefined();
-      const chats = sent.filter((m) => m.type === 'chat');
-      expect(chats).toHaveLength(1);
+      const finalChats = sent.filter(
+        (m) => m.type === 'chat' && (m as any).final === true,
+      );
+      expect(finalChats).toHaveLength(1);
     });
   });
 });
