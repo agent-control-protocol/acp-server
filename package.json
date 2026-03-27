@@ -42,7 +42,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "openai": "^4.73.0",
+    "openai": "^6.33.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {

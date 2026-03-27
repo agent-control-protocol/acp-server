@@ -5,6 +5,20 @@ All notable changes to `@acprotocol/server` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-03-27
+
+### Changed
+
+- **Reduced UI actions from 14 to 8**: Removed `highlight`, `focus`, `scroll_to`, `enable`, `disable`, `select`. Renamed `fill`/`fill_field` → `set_field`.
+- **Unified streaming**: Merged `chat_token` into `chat` message type with `delta: boolean` flag.
+- **Bumped MAX_ROUNDS from 5 to 15** for more complex agent interactions.
+
+### Removed
+
+- `ChatTokenMessage` type (replaced by `chat` with `delta: true`)
+- `AnimationType` enum and `animate`/`speed` properties
+- 6 UI actions: `highlight`, `focus`, `scroll_to`, `enable`, `disable`, `select`
+
 ## [0.1.3] - 2026-03-23
 
 ### Fixed
