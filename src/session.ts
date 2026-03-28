@@ -77,7 +77,12 @@ export class Session {
     if (this.history.length > MAX_HISTORY) {
       // Keep system prompt at index 0, trim oldest after it
       const system = this.history[0];
-      const start = this.history.length - MAX_HISTORY + 1;
+      let start = this.history.length - MAX_HISTORY + 1;
+      // Advance past orphaned tool messages so we never break a
+      // tool_calls / tool pair (OpenAI rejects orphaned tool messages)
+      while (start < this.history.length && this.history[start].role === 'tool') {
+        start++;
+      }
       this.history = [system, ...this.history.slice(start)];
     }
   }
