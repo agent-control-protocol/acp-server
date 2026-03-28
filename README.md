@@ -33,7 +33,7 @@ The SDK sends a **manifest** describing screens, fields, actions, and modals. Th
 ├── session.ts     Per-connection state: manifest, history, seq counter
 ├── prompt.ts      System prompt builder from manifest
 ├── tools.ts       Manifest ↔ OpenAI tool conversion
-├── types.ts       Full ACP v1 type definitions
+├── types.ts       Full ACP v2 type definitions
 ├── index.ts       Public API exports
 └── cli.ts         CLI entry point
 ```
@@ -164,7 +164,7 @@ The test suite includes:
 
 - **Unit tests** — prompt builder, tool conversion, session state management
 - **Integration tests** — agent loop with mock OpenAI, WebSocket server lifecycle
-- **Conformance tests** — AJV validation of all messages against the ACP v1 JSON Schema
+- **Conformance tests** — AJV validation of all messages against the ACP v2 JSON Schema
 
 ## Development
 

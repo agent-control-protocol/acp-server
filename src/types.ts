@@ -1,5 +1,5 @@
-// ACP v1 Protocol Types
-// Derived from acp-protocol/spec/acp-v1.json
+// ACP v2 Protocol Types
+// Derived from acp-protocol/spec/acp-v2.json
 
 // ── Field & Screen Descriptors ──────────────────────────────────────────────
 

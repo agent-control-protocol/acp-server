@@ -8,7 +8,7 @@ import type { ServerMessage, UIAction } from '../src/types.js';
 
 // ── Schema Setup ──────────────────────────────────────────────────────────
 
-const SCHEMA_PATH = join(__dirname, '../../acp-protocol/spec/acp-v1.json');
+const SCHEMA_PATH = join(__dirname, '../../acp-protocol/spec/acp-v2.json');
 const FIXTURES_DIR = join(__dirname, '../../acp-protocol/conformance/fixtures');
 
 let validateClient: any;
@@ -22,12 +22,12 @@ beforeAll(() => {
   addFormats(ajv);
 
   // Add all $defs as schemas so we can reference them individually
-  ajv.addSchema(schema, 'acp-v1');
+  ajv.addSchema(schema, 'acp-v2');
 
   // Compile validators for client and server messages
-  validateClient = ajv.compile({ $ref: 'acp-v1#/$defs/ClientMessage' });
-  validateServer = ajv.compile({ $ref: 'acp-v1#/$defs/ServerMessage' });
-  validateUIAction = ajv.compile({ $ref: 'acp-v1#/$defs/UIAction' });
+  validateClient = ajv.compile({ $ref: 'acp-v2#/$defs/ClientMessage' });
+  validateServer = ajv.compile({ $ref: 'acp-v2#/$defs/ServerMessage' });
+  validateUIAction = ajv.compile({ $ref: 'acp-v2#/$defs/UIAction' });
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────
