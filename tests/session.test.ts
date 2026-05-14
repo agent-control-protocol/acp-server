@@ -186,6 +186,76 @@ describe('Session', () => {
     });
   });
 
+  // ── setState / field state tracking ──────────────────────────────────────
+
+  describe('setState', () => {
+    it('stores field state for the named screen', () => {
+      const s = new Session('s1');
+      s.setState({
+        screen: 'deals',
+        fields: { contact: { value: 'Globex', dirty: true, valid: true } },
+        canSubmit: false,
+      });
+      const snap = s.getStateSnapshot('deals');
+      expect(snap?.fields?.contact).toEqual({
+        value: 'Globex',
+        dirty: true,
+        valid: true,
+      });
+      expect(snap?.canSubmit).toBe(false);
+    });
+
+    it('updates currentScreen when state carries a screen', () => {
+      const s = new Session('s1');
+      s.setState({ screen: 'deals', fields: { contact: { value: 'Acme' } } });
+      expect(s.currentScreen).toBe('deals');
+    });
+
+    it('merges per-field updates within the same screen', () => {
+      const s = new Session('s1');
+      s.setState({
+        screen: 'deals',
+        fields: { contact: { value: 'Globex' }, amount: { value: 1000 } },
+      });
+      s.setState({
+        screen: 'deals',
+        fields: { contact: { value: 'Globex', dirty: true } },
+      });
+      const snap = s.getStateSnapshot('deals');
+      expect(snap?.fields?.contact).toEqual({ value: 'Globex', dirty: true });
+      // amount preserved
+      expect(snap?.fields?.amount).toEqual({ value: 1000 });
+    });
+
+    it('keeps state per screen independent', () => {
+      const s = new Session('s1');
+      s.setState({ screen: 'deals', fields: { contact: { value: 'Acme' } } });
+      s.setState({ screen: 'contacts', fields: { email: { value: 'a@b.com' } } });
+      expect(s.getStateSnapshot('deals')?.fields?.contact?.value).toBe('Acme');
+      expect(s.getStateSnapshot('contacts')?.fields?.email?.value).toBe('a@b.com');
+    });
+
+    it('getStateSnapshot defaults to currentScreen when no arg', () => {
+      const s = new Session('s1');
+      s.setScreen('deals');
+      s.setState({ screen: 'deals', fields: { contact: { value: 'Globex' } } });
+      const snap = s.getStateSnapshot();
+      expect(snap?.fields?.contact?.value).toBe('Globex');
+    });
+
+    it('returns undefined snapshot for unknown screen', () => {
+      const s = new Session('s1');
+      expect(s.getStateSnapshot('nonexistent')).toBeUndefined();
+    });
+
+    it('accepts state without a screen by using currentScreen', () => {
+      const s = new Session('s1');
+      s.setScreen('contacts');
+      s.setState({ fields: { email: { value: 'x@y.com' } } });
+      expect(s.getStateSnapshot('contacts')?.fields?.email?.value).toBe('x@y.com');
+    });
+  });
+
   // ── nextSeq ─────────────────────────────────────────────────────────────
 
   describe('nextSeq', () => {

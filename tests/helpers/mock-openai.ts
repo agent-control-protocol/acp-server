@@ -3,6 +3,7 @@ import type { ChatCompletionChunk } from 'openai/resources/chat/completions';
 /** A single chunk delta for building mock streams. */
 interface MockDelta {
   content?: string;
+  reasoning_content?: string;
   tool_calls?: Array<{
     index: number;
     id?: string;
@@ -44,6 +45,21 @@ export function textOnlyScenario(text: string): MockDelta[] {
   const deltas: MockDelta[] = [];
   for (let i = 0; i < text.length; i += 3) {
     deltas.push({ content: text.slice(i, i + 3) });
+  }
+  return deltas;
+}
+
+/**
+ * Scenario: reasoning model that streams a `reasoning_content` chain-of-thought
+ * before the visible `content`. Mimics DeepSeek thinking mode / OpenAI o-series.
+ */
+export function reasoningScenario(reasoning: string, content: string): MockDelta[] {
+  const deltas: MockDelta[] = [];
+  for (let i = 0; i < reasoning.length; i += 4) {
+    deltas.push({ reasoning_content: reasoning.slice(i, i + 4) });
+  }
+  for (let i = 0; i < content.length; i += 3) {
+    deltas.push({ content: content.slice(i, i + 3) });
   }
   return deltas;
 }

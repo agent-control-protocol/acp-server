@@ -1,5 +1,5 @@
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
-import type { ManifestMessage } from './types.js';
+import type { FieldState, InlineState, ManifestMessage } from './types.js';
 import { buildSystemPrompt } from './prompt.js';
 
 /** Maximum number of messages to keep in the sliding window. */
@@ -34,6 +34,8 @@ export class Session {
 
   private history: ChatCompletionMessageParam[] = [];
   private _seq = 0;
+  private screenStates: Map<string, { fields: Record<string, FieldState>; canSubmit?: boolean }> =
+    new Map();
 
   constructor(id: string) {
     this.id = id;
@@ -62,6 +64,51 @@ export class Session {
    */
   setScreen(screen: string): void {
     this.currentScreen = screen;
+  }
+
+  /**
+   * Records the client-reported state of a screen — the current value of each
+   * field plus whether the screen is ready to submit. Calls merge with any
+   * previously stored state for the same screen (per-field merge), so an
+   * incremental `state` push can update one field without erasing the rest.
+   *
+   * If `state.screen` is omitted, the active `currentScreen` is used. A call
+   * carrying a screen also updates `currentScreen`.
+   */
+  setState(state: InlineState): void {
+    const screen = state.screen ?? this.currentScreen;
+    if (!screen) return;
+    if (state.screen) {
+      this.currentScreen = state.screen;
+    }
+    const existing = this.screenStates.get(screen) ?? { fields: {} };
+    const merged: { fields: Record<string, FieldState>; canSubmit?: boolean } = {
+      fields: { ...existing.fields },
+      canSubmit: state.canSubmit ?? existing.canSubmit,
+    };
+    if (state.fields) {
+      for (const [fieldId, fieldState] of Object.entries(state.fields)) {
+        merged.fields[fieldId] = fieldState;
+      }
+    }
+    this.screenStates.set(screen, merged);
+  }
+
+  /**
+   * Returns the most recent client-reported state for a screen, or `undefined`
+   * if no state has been reported. Defaults to `currentScreen` when no argument
+   * is given.
+   */
+  getStateSnapshot(screen?: string): InlineState | undefined {
+    const id = screen ?? this.currentScreen;
+    if (!id) return undefined;
+    const stored = this.screenStates.get(id);
+    if (!stored) return undefined;
+    return {
+      screen: id,
+      fields: stored.fields,
+      canSubmit: stored.canSubmit,
+    };
   }
 
   /**

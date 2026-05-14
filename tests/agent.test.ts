@@ -9,6 +9,7 @@ import {
   toolCallScenario,
   parallelToolCallScenario,
   mixedScenario,
+  reasoningScenario,
 } from './helpers/mock-openai.js';
 
 function makeSession(): Session {
@@ -407,6 +408,172 @@ describe('runAgentLoop', () => {
       expect(deltas.length).toBeGreaterThan(0);
       // Should have executed the tool call
       expect(calls).toHaveLength(1);
+    });
+  });
+
+  // ── Field state visibility ───────────────────────────────────────────────
+
+  describe('field state visibility', () => {
+    it('injects current field state into LLM messages when session has state', async () => {
+      const session = makeSession();
+      session.setScreen('deals');
+      session.setState({
+        screen: 'deals',
+        fields: {
+          contact: { value: 'Globex', dirty: true, valid: true },
+          amount: { value: 1000 },
+        },
+        canSubmit: false,
+      });
+
+      const mockAI = createMockOpenAI({
+        responses: [textOnlyScenario('Your contact is Globex.')],
+      });
+      const { send } = makeSend();
+      const { execute } = makeExecute();
+
+      await runAgentLoop(mockAI, 'mock-model', session, 'What is my contact?', execute, send);
+
+      // The first LLM call must have been given the state in its messages.
+      const callMessages = mockAI.calls[0].messages as Array<{ role: string; content: string }>;
+      const serialized = JSON.stringify(callMessages);
+      expect(serialized).toContain('Globex');
+      expect(serialized).toContain('deals');
+    });
+
+    it('updates session state when result message carries inline state', async () => {
+      const session = makeSession();
+      const mockAI = createMockOpenAI({
+        responses: [
+          toolCallScenario('call-1', 'set_field', { field: 'contact', value: 'Acme' }),
+          textOnlyScenario('Done.'),
+        ],
+      });
+      const { send } = makeSend();
+      const { execute } = makeExecute([
+        {
+          type: 'result',
+          seq: 0,
+          results: [{ index: 0, success: true }],
+          state: {
+            screen: 'deals',
+            fields: { contact: { value: 'Acme', dirty: true, valid: true } },
+            canSubmit: false,
+          },
+        },
+      ]);
+
+      await runAgentLoop(mockAI, 'mock-model', session, 'Set contact to Acme', execute, send);
+
+      const snap = session.getStateSnapshot('deals');
+      expect(snap?.fields?.contact?.value).toBe('Acme');
+    });
+
+    it('does not inject anything when session has no state yet', async () => {
+      const session = makeSession();
+      const mockAI = createMockOpenAI({
+        responses: [textOnlyScenario('Hi!')],
+      });
+      const { send } = makeSend();
+      const { execute } = makeExecute();
+
+      await runAgentLoop(mockAI, 'mock-model', session, 'Hello', execute, send);
+
+      // With no state set, the snapshot heading must NOT appear in any message.
+      // (The phrase "Current UI state" appears in the system prompt rule, so
+      // we match on the snapshot-specific heading instead.)
+      const callMessages = mockAI.calls[0].messages as Array<{ role: string; content: string }>;
+      const serialized = JSON.stringify(callMessages);
+      expect(serialized).not.toContain('authoritative — reflects user edits');
+    });
+  });
+
+  // ── Reasoning models (DeepSeek thinking, o-series) ───────────────────────
+
+  describe('reasoning_content passthrough', () => {
+    it('captures reasoning_content and adds it to the assistant history entry', async () => {
+      const session = makeSession();
+      const mockAI = createMockOpenAI({
+        responses: [reasoningScenario('Let me think about this carefully...', 'Hello there!')],
+      });
+      const { send, sent } = makeSend();
+      const { execute } = makeExecute();
+
+      await runAgentLoop(mockAI, 'mock-model', session, 'Hi', execute, send);
+
+      const history = session.getHistory();
+      const assistant = history.find((m) => m.role === 'assistant');
+      expect(assistant).toBeDefined();
+      expect((assistant as any).reasoning_content).toBe('Let me think about this carefully...');
+    });
+
+    it('does NOT stream reasoning_content to the client', async () => {
+      const session = makeSession();
+      const mockAI = createMockOpenAI({
+        responses: [reasoningScenario('Internal thinking here.', 'Visible answer.')],
+      });
+      const { send, sent } = makeSend();
+      const { execute } = makeExecute();
+
+      await runAgentLoop(mockAI, 'mock-model', session, 'Hi', execute, send);
+
+      const chatDeltas = sent
+        .filter((m) => m.type === 'chat' && (m as any).delta === true)
+        .map((m) => (m as any).message)
+        .join('');
+      expect(chatDeltas).toBe('Visible answer.');
+      expect(chatDeltas).not.toContain('Internal thinking');
+    });
+
+    it('forwards reasoning_content back on subsequent LLM calls', async () => {
+      const session = makeSession();
+      const mockAI = createMockOpenAI({
+        responses: [
+          reasoningScenario('First reasoning.', ''),
+          textOnlyScenario('Final.'),
+        ],
+      });
+      const { send } = makeSend();
+      const { execute } = makeExecute();
+
+      // First round: only reasoning + empty content, no tool calls, so the loop
+      // ends after round 0. To force round 1, use a tool-call-then-final flow.
+      const mockAI2 = createMockOpenAI({
+        responses: [
+          [
+            ...reasoningScenario('First reasoning.', '').filter((d) => d.reasoning_content),
+            ...toolCallScenario('call-1', 'navigate', { screen: 'deals' }).flat(),
+          ],
+          textOnlyScenario('Done.'),
+        ],
+      });
+
+      await runAgentLoop(mockAI2, 'mock-model', session, 'Go', execute, send);
+
+      // Round 2 messages should contain the round-1 assistant message with reasoning_content.
+      expect(mockAI2.callCount).toBe(2);
+      const round2Messages = mockAI2.calls[1].messages as Array<any>;
+      const assistantInRound2 = round2Messages.find(
+        (m) => m.role === 'assistant' && m.reasoning_content,
+      );
+      expect(assistantInRound2).toBeDefined();
+      expect(assistantInRound2.reasoning_content).toBe('First reasoning.');
+    });
+
+    it('omits reasoning_content when the model did not emit any (OpenAI gpt-4o, etc.)', async () => {
+      const session = makeSession();
+      const mockAI = createMockOpenAI({
+        responses: [textOnlyScenario('Hi!')],
+      });
+      const { send } = makeSend();
+      const { execute } = makeExecute();
+
+      await runAgentLoop(mockAI, 'mock-model', session, 'Hi', execute, send);
+
+      const history = session.getHistory();
+      const assistant = history.find((m) => m.role === 'assistant');
+      expect(assistant).toBeDefined();
+      expect('reasoning_content' in (assistant as object)).toBe(false);
     });
   });
 

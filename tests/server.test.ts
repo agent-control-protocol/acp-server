@@ -337,5 +337,53 @@ describe('ACP Server', () => {
       await client.close();
       await server.stop();
     });
+
+    it('field state from a state message reaches the LLM context', async () => {
+      const port = nextPort();
+      const mockAI = createMockOpenAI({
+        responses: [textOnlyScenario('Your contact is Globex.')],
+      });
+      const server = createServer({
+        openai: mockAI,
+        model: 'test-model',
+        port,
+      });
+      await server.start();
+      const client = new WSTestClient();
+      await client.connect(`ws://localhost:${port}/connect`);
+
+      await client.waitForMessage('config', 2000);
+      client.send(createCrmManifest());
+      await wait(100);
+      client.clearMessages();
+
+      // Client reports its current field state.
+      client.send({
+        type: 'state',
+        screen: 'deals',
+        fields: {
+          contact: { value: 'Globex', dirty: true, valid: true },
+          amount: { value: 1000 },
+        },
+        canSubmit: false,
+      });
+      await wait(50);
+
+      // Now the user asks something — the LLM should be told what's on screen.
+      client.send({ type: 'text', message: 'Who is my contact?' });
+      await wait(500);
+
+      // The LLM call triggered by `text` must have seen Globex in its messages.
+      expect(mockAI.callCount).toBeGreaterThanOrEqual(1);
+      const messages = mockAI.calls[mockAI.calls.length - 1].messages as Array<{
+        role: string;
+        content: string;
+      }>;
+      const serialized = JSON.stringify(messages);
+      expect(serialized).toContain('Globex');
+
+      await client.close();
+      await server.stop();
+    });
   });
 });

@@ -1,8 +1,70 @@
 import type OpenAI from 'openai';
-import type { ChatCompletionChunk } from 'openai/resources/chat/completions';
+import type {
+  ChatCompletionChunk,
+  ChatCompletionMessageParam,
+} from 'openai/resources/chat/completions';
 import type { Session } from './session.js';
-import type { UIAction, ResultMessage, ServerMessage } from './types.js';
+import type { FieldState, UIAction, ResultMessage, ServerMessage } from './types.js';
 import { manifestToTools, toolCallToUIAction } from './tools.js';
+
+/**
+ * Builds a compact, LLM-readable snapshot of the client-reported state for
+ * the session's current screen, or `null` if no state has been reported.
+ *
+ * Output shape:
+ * ```
+ * ## Current UI state
+ * Screen: deals
+ * - contact: "Globex" (dirty, valid)
+ * - amount: 1000
+ * canSubmit: false
+ * ```
+ */
+function buildStateSnapshot(session: Session): string | null {
+  const snap = session.getStateSnapshot();
+  if (!snap || !snap.fields || Object.keys(snap.fields).length === 0) {
+    return null;
+  }
+  const lines: string[] = [
+    '## Current UI state (authoritative — reflects user edits since your last turn)',
+    `Screen: ${snap.screen ?? session.currentScreen}`,
+  ];
+  for (const [fieldId, fs] of Object.entries(snap.fields as Record<string, FieldState>)) {
+    const flags: string[] = [];
+    if (fs.dirty) flags.push('dirty');
+    if (fs.valid === true) flags.push('valid');
+    if (fs.valid === false) flags.push('invalid');
+    if (fs.error) flags.push(`error: ${fs.error}`);
+    const flagStr = flags.length ? ` (${flags.join(', ')})` : '';
+    const rendered =
+      fs.value === undefined || fs.value === null
+        ? 'null'
+        : typeof fs.value === 'string'
+          ? `"${fs.value}"`
+          : JSON.stringify(fs.value);
+    lines.push(`- ${fieldId}: ${rendered}${flagStr}`);
+  }
+  if (snap.canSubmit !== undefined) {
+    lines.push(`canSubmit: ${snap.canSubmit}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Returns the LLM message list for the next round: session history plus an
+ * ephemeral system message with the current UI state snapshot, if any. The
+ * snapshot is *not* added to session history — it is regenerated each round
+ * from the latest `setState` call so the agent always sees up-to-date state
+ * without polluting persistent context.
+ */
+function buildMessagesForRound(session: Session): ChatCompletionMessageParam[] {
+  const messages = session.getHistory();
+  const snap = buildStateSnapshot(session);
+  if (snap) {
+    messages.push({ role: 'system', content: snap });
+  }
+  return messages;
+}
 
 /** Maximum number of LLM rounds before sending a fallback response. */
 const MAX_ROUNDS = 15;
@@ -60,16 +122,17 @@ export async function runAgentLoop(
   let lastResponseText = '';
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    const history = session.getHistory();
+    const messages = buildMessagesForRound(session);
 
     const stream = await openai.chat.completions.create({
       model,
-      messages: history,
+      messages,
       tools: tools?.length ? tools : undefined,
       stream: true,
     });
 
     let contentBuf = '';
+    let reasoningBuf = '';
     const accToolCalls: Array<{
       id: string;
       type: string;
@@ -84,6 +147,15 @@ export async function runAgentLoop(
       if (delta.content) {
         contentBuf += delta.content;
         send({ type: 'chat', from: 'agent', message: delta.content, delta: true });
+      }
+
+      // Reasoning models (DeepSeek thinking mode, o-series) stream a parallel
+      // `reasoning_content` field with the model's internal chain-of-thought.
+      // The provider REQUIRES it to be echoed back in the next assistant turn,
+      // so we accumulate it here. It is not surfaced to the client.
+      const reasoningDelta = (delta as { reasoning_content?: string }).reasoning_content;
+      if (reasoningDelta) {
+        reasoningBuf += reasoningDelta;
       }
 
       // Accumulate tool call deltas
@@ -106,6 +178,9 @@ export async function runAgentLoop(
       role: 'assistant' as const,
       content: contentBuf || null,
     };
+    if (reasoningBuf) {
+      assistantMsg.reasoning_content = reasoningBuf;
+    }
     if (accToolCalls.length > 0) {
       assistantMsg.tool_calls = accToolCalls.map((tc) => ({
         id: tc.id,
@@ -172,6 +247,12 @@ export async function runAgentLoop(
     }
 
     send({ type: 'status', status: 'thinking' });
+
+    // The client may piggyback a fresh UI state snapshot on the result —
+    // capture it so subsequent rounds see post-action field values.
+    if (resultMsg.state) {
+      session.setState(resultMsg.state);
+    }
 
     // Map results back to tool messages
     const resultsByIndex = new Map<number, { success: boolean; error?: string }>();

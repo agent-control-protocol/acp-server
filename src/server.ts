@@ -162,7 +162,11 @@ function handleConnection(ws: WebSocket, openai: OpenAI, model: string): void {
         break;
 
       case 'state':
-        session.setScreen(msg.screen);
+        session.setState({
+          screen: msg.screen,
+          fields: msg.fields,
+          canSubmit: msg.canSubmit,
+        });
         break;
 
       case 'result':

@@ -5,6 +5,22 @@ All notable changes to `@acprotocol/server` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-05-13
+
+### Added
+
+- **Field state visibility loop closed.** The `state` message and `result.state` field defined in ACP v2 were previously parsed but discarded by the reference server — only the screen name survived. The server now stores per-screen field state on the `Session` and injects a compact `## Current UI state` snapshot into the LLM message list before each round, regenerated each turn so the agent always sees the latest user edits without polluting persistent history.
+  - `Session.setState(state)` and `Session.getStateSnapshot(screen?)` are new public methods.
+  - Server's `state` handler now consumes `fields` and `canSubmit`, not just `screen`.
+  - Agent loop also consumes `result.state` so commands' post-execution state flows back.
+  - System prompt rules updated to instruct the agent that the snapshot is authoritative over chat history.
+- **Reasoning model support.** Captures `reasoning_content` from streaming deltas (DeepSeek thinking mode, OpenAI o-series) and echoes it back in subsequent assistant messages, which these providers require for multi-round tool calling. Not surfaced to the client.
+- **Smoke test script** at `scripts/smoke-state.ts` boots the server in-process, drives a fake SDK through the full state→LLM loop, and asserts the model saw the pushed values. Runnable against any OpenAI-compatible provider.
+
+### Changed
+
+- `tests/helpers/mock-openai.ts` gains `reasoningScenario` for testing thinking-model flows.
+
 ## [2.0.0] - 2026-03-28
 
 ### Changed

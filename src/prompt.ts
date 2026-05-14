@@ -113,6 +113,7 @@ export function buildSystemPrompt(manifest: ManifestMessage): string {
       '- Navigate to the correct screen before setting fields.',
       '- When setting multiple fields on the same screen, combine ALL set_field calls in a single response.',
       '- Do NOT set one field at a time — batch them together.',
+      '- The user can edit fields directly between your turns. Before answering any question about what is currently on screen (field values, what is filled, what is missing), check the "Current UI state" section — it is the authoritative source, not your chat history or the values you previously set.',
     ].join('\n'),
   );
 
